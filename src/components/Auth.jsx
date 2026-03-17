@@ -3,10 +3,8 @@ import { supabase } from '../utils/supabaseClient';
 import { Lock, Mail, ChevronRight, Check } from 'lucide-react';
 
 export default function Auth() {
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role] = useState('client'); // default role
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -16,24 +14,11 @@ export default function Auth() {
     setError('');
 
     try {
-      if (isLogin) {
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-        if (signInError) throw signInError;
-      } else {
-        const { error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              role: role
-            }
-          }
-        });
-        if (signUpError) throw signUpError;
-      }
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (signInError) throw signInError;
     } catch (err) {
       setError(err.message);
     } finally {
@@ -47,10 +32,10 @@ export default function Auth() {
         <div className="flex flex-col items-center mb-8">
           <img src="/logo.png" alt="Finivis Logo" className="h-10 object-contain mb-6" />
           <h2 className="text-2xl font-bold text-finivis-dark tracking-tight">
-            {isLogin ? 'Sign in to Finivis' : 'Create an Account'}
+            Sign in to Finivis
           </h2>
           <p className="text-gray-500 text-sm mt-2 text-center">
-            {isLogin ? 'Access your assessment dashboard.' : 'Start analyzing your business opportunities.'}
+            Access your assessment dashboard.
           </p>
         </div>
 
@@ -104,21 +89,13 @@ export default function Auth() {
             disabled={loading}
             className="w-full mt-8 py-3.5 bg-finivis-blue text-white rounded-[1.2rem] font-bold text-[15px] hover:bg-blue-600 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,122,255,0.25)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Authenticating...' : (isLogin ? 'Sign In' : 'Create Account')}
+            {loading ? 'Authenticating...' : 'Sign In'}
             {!loading && <ChevronRight size={18} />}
           </button>
         </form>
 
         <div className="mt-8 text-center">
-          <button
-            onClick={() => {
-              setIsLogin(!isLogin);
-              setError('');
-            }}
-            className="text-[14px] font-medium text-gray-500 hover:text-finivis-blue transition-colors"
-          >
-            {isLogin ? 'Need an account? Sign up' : 'Already have an account? Sign in'}
-          </button>
+          {/* Sign up removed */}
         </div>
       </div>
     </div>
