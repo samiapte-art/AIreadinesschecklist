@@ -142,7 +142,7 @@ export default function ClientForm({ session }) {
       alert("Failed to save. Please check your connection or database configuration.");
       console.error(resultError);
     } else {
-      setSubmittedMessage(selectedSubId ? 'Assessment Updated Successfully!' : 'New Assessment Submitted!');
+      setSubmittedMessage(selectedSubId ? 'Assessment Updated Successfully!' : 'Success! Your new assessment has been submitted.');
       fetchSubmissions(); // Re-fetch the list to show the new/updated name
       
       // Auto-hide success message after 3 seconds
@@ -252,7 +252,7 @@ export default function ClientForm({ session }) {
 
           <div className="space-y-4">
             <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-finivis-dark">Process Breakdowns ({opportunities.length}/5)</h2>
+              <h2 className="text-xl font-bold text-finivis-dark">Process Details ({opportunities.length}/5)</h2>
             </div>
             
             {opportunities.map((opp, idx) => (
