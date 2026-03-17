@@ -9,11 +9,12 @@ import {
   Legend
 } from 'chart.js';
 import { Scatter } from 'react-chartjs-2';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as xlsx from 'xlsx';
 
-ChartJS.register(LinearScale, PointElement, Tooltip, Legend);
+ChartJS.register(LinearScale, PointElement, Tooltip, Legend, ChartDataLabels);
 
 export default function Dashboard({ opportunities, processName }) {
   
@@ -58,6 +59,19 @@ export default function Dashboard({ opportunities, processName }) {
       }
     },
     plugins: {
+      datalabels: {
+        anchor: 'end',
+        align: 'top',
+        formatter: (value, context) => {
+          return context.dataset.data[context.dataIndex].name || 'Unnamed';
+        },
+        font: {
+          weight: 'bold',
+          size: 11
+        },
+        color: '#4B5563', // gray-600
+        offset: 4
+      },
       tooltip: {
         callbacks: {
           label: (ctx) => {
