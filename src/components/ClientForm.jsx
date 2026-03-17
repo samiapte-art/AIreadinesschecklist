@@ -142,7 +142,7 @@ export default function ClientForm({ session }) {
       alert("Failed to save. Please check your connection or database configuration.");
       console.error(resultError);
     } else {
-      setSubmittedMessage(selectedSubId ? 'Assessment Updated Successfully!' : 'Success! Your new assessment has been submitted.');
+      setSubmittedMessage('Success! Your assessment has been submitted.');
       fetchSubmissions(); // Re-fetch the list to show the new/updated name
       
       // Auto-hide success message after 3 seconds
@@ -213,13 +213,7 @@ export default function ClientForm({ session }) {
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-6 py-10">
         
-        {/* Success Banner */}
-        {submittedMessage && (
-          <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold flex items-center justify-between shadow-sm animate-fade-in fade-in-up">
-            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"></div> {submittedMessage}</span>
-            <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-md">Saved securely to Finivis</span>
-          </div>
-        )}
+        {/* Success Banner Removed, replaced with Modal below */}
 
         <div className="space-y-8 animate-fade-in fade-in-up">
           <div className="flex items-center justify-between mb-4">
@@ -287,10 +281,33 @@ export default function ClientForm({ session }) {
               : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
             }`}
           >
-            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : <>{selectedSubId ? 'Save Changes' : 'Submit New Assessment'} <ChevronRight size={16} /></>}
+            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : <>Submit <ChevronRight size={16} /></>}
           </button>
         </div>
       </main>
+
+      {/* Success Modal */}
+      {submittedMessage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 transform transition-all animate-scale-up">
+            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4 mx-auto">
+              <div className="w-6 h-6 text-green-600 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-center text-gray-900 mb-2">Success!</h3>
+            <p className="text-gray-600 text-center mb-6">{submittedMessage}</p>
+            <button 
+              onClick={() => setSubmittedMessage('')}
+              className="w-full py-3 bg-finivis-blue text-white rounded-xl font-bold hover:bg-finivis-blue/90 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
