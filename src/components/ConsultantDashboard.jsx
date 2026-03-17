@@ -3,9 +3,9 @@ import { supabase } from '../utils/supabaseClient';
 import Dashboard from './Dashboard';
 import AIInsightsPanel from './AIInsightsPanel';
 import { analyzeOpportunities } from '../utils/aiAnalyzer';
-import { Loader2, Users, Sparkles } from 'lucide-react';
+import { Loader2, Users, Sparkles, LogOut } from 'lucide-react';
 
-export default function ConsultantDashboard() {
+export default function ConsultantDashboard({ session }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -35,7 +35,7 @@ export default function ConsultantDashboard() {
       setSubmissions([{
         id: 'mock-id-1',
         client_name: 'Acme Corp',
-        process_area: 'Invoice Processing',
+        client_website: 'acme.com',
         created_at: new Date().toISOString(),
         opportunities_json: [{
              name: 'Automate approvals',
@@ -79,13 +79,18 @@ export default function ConsultantDashboard() {
 
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
-       <header className="bg-[#1a1a1a] text-white border-b border-gray-800 sticky top-0 z-10 px-6 py-4">
+       <header className="glass-header sticky top-0 z-10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3 shrink-0">
             <img src="/logo.png" alt="Finivis Logo" className="h-8 object-contain" />
-            <h1 className="text-xl font-bold tracking-tight">
+            <h1 className="text-xl font-bold tracking-tight text-finivis-dark">
               Finivis Internal Dashboard
             </h1>
+            {session?.user?.email && (
+              <span className="hidden lg:block bg-blue-50 text-finivis-blue border border-blue-100 px-3 py-1 rounded-full text-xs font-bold ml-2">
+                {session.user.email}
+              </span>
+            )}
           </div>
           
           {/* Top Navigation - Client List */}
@@ -100,10 +105,10 @@ export default function ConsultantDashboard() {
                   <button 
                     key={sub.id}
                     onClick={() => setSelectedSubmission(sub)}
-                    className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all border ${
+                    className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-medium transition-all border ${
                       selectedSubmission?.id === sub.id 
-                      ? 'bg-finivis-blue text-white border-finivis-blue shadow-md' 
-                      : 'bg-white/10 hover:bg-white/20 text-gray-300 border-white/5'
+                      ? 'bg-finivis-dark text-white shadow-md border-transparent' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-transparent'
                     }`}
                   >
                     <span>{sub.client_name}</span>
@@ -111,6 +116,15 @@ export default function ConsultantDashboard() {
                 ))}
               </div>
             )}
+            
+            <div className="pl-4 ml-2 border-l border-gray-200 flex items-center shrink-0">
+               <button 
+                 onClick={() => supabase.auth.signOut()}
+                 className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50 flex items-center gap-2 text-sm font-medium"
+               >
+                 <LogOut size={16} /> <span className="hidden sm:block">Sign Out</span>
+               </button>
+            </div>
           </div>
         </div>
       </header>
@@ -123,17 +137,17 @@ export default function ConsultantDashboard() {
                <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-6">
                  <div>
                    <h2 className="text-3xl font-extrabold text-finivis-dark mb-1">{selectedSubmission.client_name}</h2>
-                   <p className="text-gray-500 font-medium">Process Area: <span className="text-finivis-blue bg-blue-50 px-2 py-0.5 rounded">{selectedSubmission.process_area}</span></p>
+                   <p className="text-gray-500 font-medium">Website: <span className="text-finivis-blue bg-blue-50 px-2 py-0.5 rounded">{selectedSubmission.client_website}</span></p>
                  </div>
                  <div className="flex items-center gap-4">
                    {aiError && <span className="text-red-500 text-sm font-medium">{aiError}</span>}
                    <button 
                      onClick={handleGenerateAI}
                      disabled={aiLoading}
-                     className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-all ${
+                     className={`flex items-center justify-center gap-2 px-6 py-3 rounded-[1.25rem] font-bold transition-all shadow-apple ${
                        aiLoading 
                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                       : 'bg-gradient-to-r from-finivis-dark to-black text-white hover:shadow-xl hover:-translate-y-0.5'
+                       : 'bg-white border border-gray-200 text-finivis-dark hover:shadow-lg hover:-translate-y-0.5'
                      }`}
                    >
                      {aiLoading ? (
@@ -150,7 +164,7 @@ export default function ConsultantDashboard() {
                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mt-8">
                  <Dashboard 
                     opportunities={selectedSubmission.opportunities_json} 
-                    processName={`${selectedSubmission.client_name} - ${selectedSubmission.process_area}`}
+                    processName={`${selectedSubmission.client_name} - ${selectedSubmission.client_website}`}
                  />
                </div>
             </div>

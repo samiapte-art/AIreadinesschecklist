@@ -1,34 +1,65 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import OpportunityForm from './OpportunityForm';
-import { Plus, ArrowRight, Save, Send } from 'lucide-react';
+import { Plus, LogOut, Loader2, FilePlus, ChevronRight } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
-export default function ClientForm() {
-  const [processName, setProcessName] = useState('');
+export default function ClientForm({ session }) {
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Current Form State
+  const [selectedSubId, setSelectedSubId] = useState(null);
+  const [clientWebsite, setClientWebsite] = useState('');
   const [clientName, setClientName] = useState('');
   const [opportunities, setOpportunities] = useState([{}]);
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submittedMessage, setSubmittedMessage] = useState('');
 
-  // Auto-load from history
-  useEffect(() => {
-    const saved = localStorage.getItem('finivis_client_data');
-    if (saved) {
-      try {
-        const { processName: savedProcess, clientName: savedClient, opportunities: savedOpps } = JSON.parse(saved);
-        if (savedProcess) setTimeout(() => setProcessName(savedProcess), 0);
-        if (savedClient) setTimeout(() => setClientName(savedClient), 0);
-        if (savedOpps && savedOpps.length > 0) setTimeout(() => setOpportunities(savedOpps), 0);
-      } catch(e) { console.error('Error loading saved data', e); }
+  const fetchSubmissions = async () => {
+    setLoading(true);
+    // RLS automatically limits this to the client's own rows
+    const { data, error } = await supabase
+      .from('client_submissions')
+      .select('*')
+      .order('created_at', { ascending: false });
+      
+    if (error) {
+      console.error("Error fetching submissions:", error);
+    } else {
+      setSubmissions(data || []);
+      // Auto-select the most recent one if we don't have one selected, or keep the existing
+      if (!selectedSubId && data && data.length > 0) {
+        handleSelectSubmission(data[0]);
+      }
     }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchSubmissions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-save on change
-  useEffect(() => {
-    const data = { processName, clientName, opportunities };
-    localStorage.setItem('finivis_client_data', JSON.stringify(data));
-  }, [processName, clientName, opportunities]);
+  const handleSelectSubmission = (sub) => {
+    if (!sub) {
+      // Start a completely new submission
+      setSelectedSubId(null);
+      setClientName('');
+      setClientWebsite('');
+      setOpportunities([{}]);
+      setExpandedIndex(0);
+      setSubmittedMessage('');
+    } else {
+      // Load existing submission
+      setSelectedSubId(sub.id);
+      setClientName(sub.client_name || '');
+      setClientWebsite(sub.client_website || '');
+      setOpportunities(sub.opportunities_json || [{}]);
+      setExpandedIndex(-1); // Collapse all on load
+      setSubmittedMessage('');
+    }
+  };
 
   const addOpportunity = () => {
     if (opportunities.length >= 5) return;
@@ -50,113 +81,177 @@ export default function ClientForm() {
     setOpportunities(newOpps);
   };
 
-  const isFormValid = opportunities.some(opp => opp.name && opp.description) && clientName.trim() !== '' && processName.trim() !== '';
+  const isFormValid = opportunities.some(opp => opp.name && opp.description) && clientName.trim() !== '' && clientWebsite.trim() !== '';
+
+  // Auto-save: persist changes to Supabase when editing an existing submission
+  const autoSaveTimer = useRef(null);
+  const autoSave = useCallback(async (subId, opps, name, website) => {
+    if (!subId) return; // Only auto-save on existing records
+    const { error } = await supabase
+      .from('client_submissions')
+      .update({ 
+        opportunities_json: opps, 
+        client_name: name,
+        client_website: website
+      })
+      .eq('id', subId);
+    if (error) console.error('Auto-save failed:', error);
+  }, []);
+
+  useEffect(() => {
+    if (!selectedSubId) return;
+    // Debounce: wait 2 seconds after the last change before saving
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => {
+      autoSave(selectedSubId, opportunities, clientName, clientWebsite);
+    }, 2000);
+    return () => clearTimeout(autoSaveTimer.current);
+  }, [opportunities, clientName, clientWebsite, selectedSubId, autoSave]);
 
   const handleSubmit = async () => {
     if (!isFormValid) return;
     setIsSubmitting(true);
     
-    // We send data to Supabase
-    const { error } = await supabase
-      .from('client_submissions')
-      .insert([
-        { 
-           client_name: clientName, 
-           process_area: processName, 
-           opportunities_json: opportunities 
-        }
-      ]);
+    const payload = { 
+       user_id: session?.user?.id,
+       client_name: clientName, 
+       client_website: clientWebsite, 
+       opportunities_json: opportunities 
+    };
+
+    let resultError = null;
+
+    if (selectedSubId) {
+      // Update existing
+      const { error } = await supabase
+        .from('client_submissions')
+        .update(payload)
+        .eq('id', selectedSubId);
+      resultError = error;
+    } else {
+      // Create new
+      const { error } = await supabase
+        .from('client_submissions')
+        .insert([payload]);
+      resultError = error;
+    }
       
     setIsSubmitting(false);
 
-    if (error) {
-      alert("Failed to submit. Please check your connection or database configuration.");
-      console.error(error);
+    if (resultError) {
+      alert("Failed to save. Please check your connection or database configuration.");
+      console.error(resultError);
     } else {
-      setSubmitted(true);
-      localStorage.removeItem('finivis_client_data'); // Clear local storage on success
+      setSubmittedMessage(selectedSubId ? 'Assessment Updated Successfully!' : 'New Assessment Submitted!');
+      fetchSubmissions(); // Re-fetch the list to show the new/updated name
+      
+      // Auto-hide success message after 3 seconds
+      setTimeout(() => setSubmittedMessage(''), 3000);
     }
   };
-
-  if (submitted) {
-    return (
-      <div className="min-h-screen bg-[#F5F7FA] flex items-center justify-center p-6">
-         <div className="bg-white max-w-lg w-full rounded-3xl p-10 text-center shadow-xl border border-gray-100 animate-fade-in fade-in-up">
-           <div className="w-20 h-20 mx-auto rounded-full bg-green-100 flex items-center justify-center mb-6">
-             <Save className="text-green-600 w-10 h-10" />
-           </div>
-           <h2 className="text-3xl font-bold text-finivis-dark mb-4">Assessment Submitted</h2>
-           <p className="text-gray-500 mb-8 leading-relaxed">
-             Thank you. Our strategists have securely received your processes. 
-             We are utilizing the Finivis AI framework to analyze viability and will present a custom implementation roadmap during our next sync.
-           </p>
-         </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
       
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 px-6 py-4">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      <header className="glass-header sticky top-0 z-10 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 shrink-0">
             <img src="/logo.png" alt="Finivis Logo" className="h-8 object-contain" />
             <h1 className="text-xl font-bold tracking-tight text-finivis-dark hidden sm:block">
-              AI opportunity Discovery tracker
+              AI Opportunity Discovery Tracker
             </h1>
           </div>
           
-          <div className="flex gap-2 items-center">
-            <p className="text-xs text-gray-500 mr-4 hidden md:flex items-center gap-1">
-              <Save size={12} /> Auto-saving progress...
-            </p>
-            <button 
-              disabled={!isFormValid || isSubmitting}
-              onClick={handleSubmit}
-              className={`text-sm font-medium px-6 py-2.5 rounded-lg transition-all flex items-center gap-2 ${
-                isFormValid && !isSubmitting
-                ? 'bg-gradient-to-r from-finivis-blue to-[#2B6AF0] hover:shadow-lg text-white' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              {isSubmitting ? 'Sending...' : 'Submit'} <Send size={16} />
-            </button>
+          <div className="flex-1 flex items-center justify-start md:justify-end gap-3 overflow-x-auto pb-2 md:pb-0 custom-scrollbar hide-scrollbar">
+            {loading ? (
+               <Loader2 className="animate-spin text-finivis-blue" size={20} />
+            ) : (
+              <div className="flex gap-2 items-center">
+                <button 
+                  onClick={() => handleSelectSubmission(null)}
+                  className={`shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-[14px] font-medium transition-all border ${
+                    !selectedSubId 
+                    ? 'bg-finivis-dark text-white shadow-md border-transparent' 
+                    : 'bg-green-50 hover:bg-green-100 text-green-700 border-transparent border-dashed border border-green-200'
+                  }`}
+                >
+                  <FilePlus size={16} /> <span className="hidden md:inline">New Assessment</span>
+                </button>
+                
+                {submissions.length > 0 && <span className="text-gray-300 mx-1">|</span>}
+
+                {submissions.map(sub => (
+                  <button 
+                    key={sub.id}
+                    onClick={() => handleSelectSubmission(sub)}
+                    className={`shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-[14px] font-medium transition-all border ${
+                      selectedSubId === sub.id 
+                      ? 'bg-finivis-dark text-white shadow-md border-transparent' 
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border-transparent'
+                    }`}
+                  >
+                    <span>{sub.client_name || 'Unnamed'}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            <div className="pl-4 ml-2 border-l border-gray-200 flex items-center shrink-0">
+               <button 
+                 onClick={() => supabase.auth.signOut()}
+                 className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50 flex items-center gap-2 text-sm font-medium"
+                 title="Sign Out"
+               >
+                 <LogOut size={16} /> <span className="hidden sm:block">Sign Out</span>
+               </button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-6 py-10">
-        <div className="space-y-8 animate-fade-in">
-          
+        
+        {/* Success Banner */}
+        {submittedMessage && (
+          <div className="mb-6 p-4 rounded-xl bg-green-50 border border-green-200 text-green-700 font-bold flex items-center justify-between shadow-sm animate-fade-in fade-in-up">
+            <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-green-500"></div> {submittedMessage}</span>
+            <span className="text-xs font-medium text-green-600 bg-green-100 px-2 py-1 rounded-md">Saved securely to Finivis</span>
+          </div>
+        )}
+
+        <div className="space-y-8 animate-fade-in fade-in-up">
+          <div className="flex items-center justify-between mb-4">
+             <h2 className="text-3xl font-extrabold text-finivis-dark">{selectedSubId ? 'Edit Assessment' : 'New Assessment'}</h2>
+          </div>
+
           {/* Intake Info */}
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-finivis-border grid md:grid-cols-2 gap-6">
+          <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100 grid md:grid-cols-2 gap-6">
              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">client website</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Company Name</label>
                 <input 
                   type="text"
                   placeholder="e.g. Acme Corp"
-                  className="w-full text-lg p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-finivis-blue outline-none transition-all"
+                  className="apple-input"
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
                 />
              </div>
              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Business Area Focus</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Company Website</label>
                 <input 
                   type="text"
-                  placeholder="e.g. Finance & Accounting Validation"
-                  className="w-full text-lg p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-finivis-blue outline-none transition-all"
-                  value={processName}
-                  onChange={(e) => setProcessName(e.target.value)}
+                  placeholder="e.g. acme.com"
+                  className="apple-input"
+                  value={clientWebsite}
+                  onChange={(e) => setClientWebsite(e.target.value)}
                 />
              </div>
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2 px-2">
+            <div className="flex items-center justify-between mb-2">
               <h2 className="text-xl font-bold text-finivis-dark">Process Breakdowns ({opportunities.length}/5)</h2>
             </div>
             
@@ -175,12 +270,25 @@ export default function ClientForm() {
             {opportunities.length < 5 && (
               <button 
                 onClick={addOpportunity}
-                className="w-full py-5 border-2 border-dashed border-gray-300 rounded-2xl text-finivis-blue font-medium flex items-center justify-center gap-2 hover:bg-blue-50 transition-all bg-white"
+                className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[1.5rem] text-finivis-blue font-bold flex items-center justify-center gap-2 hover:bg-finivis-blue/5 transition-all bg-white"
               >
                 <Plus size={20} /> Add Another Process Opportunity
               </button>
             )}
           </div>
+
+          {/* Submit Button */}
+          <button 
+            disabled={!isFormValid || isSubmitting}
+            onClick={handleSubmit}
+            className={`w-full py-4 rounded-[1.2rem] font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${
+              isFormValid && !isSubmitting
+              ? 'bg-finivis-blue text-white shadow-apple hover:-translate-y-0.5 hover:shadow-lg' 
+              : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+            }`}
+          >
+            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Saving...</> : <>{selectedSubId ? 'Save Changes' : 'Submit New Assessment'} <ChevronRight size={16} /></>}
+          </button>
         </div>
       </main>
     </div>

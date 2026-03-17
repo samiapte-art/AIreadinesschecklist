@@ -15,10 +15,10 @@ export default function AIInsightsPanel({ insights }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl p-6 md:p-8 text-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-200 mt-8 mb-8 animate-fade-in fade-in-up">
+    <div className="bg-white rounded-[2rem] p-6 md:p-8 text-gray-900 shadow-apple border border-gray-100 mt-8 mb-8 animate-fade-in fade-in-up">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2 pb-6 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <div className="bg-gradient-to-br from-finivis-blue flex items-center justify-center to-blue-600 p-2.5 rounded-xl shadow-sm text-white">
+          <div className="bg-finivis-blue flex items-center justify-center p-2.5 rounded-[0.8rem] shadow-sm text-white">
             <Sparkles size={24} />
           </div>
           <div>
@@ -50,7 +50,7 @@ export default function AIInsightsPanel({ insights }) {
         <div className="space-y-8 animate-fade-in mt-8">
           {/* Top Row: Exec Summary & Top Rec */}
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+            <div className="bg-[#f5f5f7] p-6 rounded-[1.5rem] border border-gray-100/50">
               <h4 className="text-gray-500 text-xs tracking-widest uppercase font-bold mb-3 flex items-center gap-2">
                 <Lightbulb size={16} className="text-yellow-500" /> Executive Summary
               </h4>
@@ -59,7 +59,7 @@ export default function AIInsightsPanel({ insights }) {
               </p>
             </div>
 
-            <div className="bg-gradient-to-br from-blue-50 to-white p-6 rounded-xl border border-blue-100 shadow-sm relative overflow-hidden">
+            <div className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-apple relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-finivis-blue blur-[80px] opacity-10 rounded-full"></div>
               <h4 className="text-finivis-blue text-xs tracking-widest uppercase font-bold mb-3 relative z-10">
                 Top Priority Recommendation
@@ -76,7 +76,7 @@ export default function AIInsightsPanel({ insights }) {
           {/* Middle Row: SOW & Email */}
           <div className="grid md:grid-cols-2 gap-6">
             {/* SOW */}
-            <div className="bg-white p-6 rounded-xl border border-emerald-100 shadow-sm md:col-span-2 lg:col-span-1">
+            <div className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-apple md:col-span-2 lg:col-span-1">
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-emerald-50">
                 <h4 className="text-emerald-700 text-xs tracking-widest uppercase font-bold flex items-center gap-2">
                   <FileText size={16} className="text-emerald-500" /> Detailed Scope of Work (SOW)
@@ -95,7 +95,7 @@ export default function AIInsightsPanel({ insights }) {
                   
                   <div className="space-y-4 pt-2">
                     {insights.scopeOfWork.phases?.map((phase, i) => (
-                      <div key={i} className="text-sm bg-white p-4 rounded-xl border border-gray-100 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+                      <div key={i} className="text-sm bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                         <p className="font-extrabold text-gray-900 mb-2">{phase.name}</p>
                         <p className="text-gray-600 text-xs leading-relaxed mb-4">{phase.description}</p>
                         
@@ -151,7 +151,7 @@ export default function AIInsightsPanel({ insights }) {
             </div>
 
             {/* Draft Email */}
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm flex flex-col md:col-span-2 lg:col-span-1">
+            <div className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-apple flex flex-col md:col-span-2 lg:col-span-1">
               <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
                 <h4 className="text-gray-700 text-xs tracking-widest uppercase font-bold flex items-center gap-2">
                   <Mail size={16} className="text-finivis-blue" /> Draft Client Email
@@ -176,7 +176,7 @@ export default function AIInsightsPanel({ insights }) {
 
           {/* Bottom Row: Risk, Tech, Tasks */}
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-red-50 p-6 rounded-xl border border-red-100 shadow-sm">
+            <div className="bg-[#fff0f0] p-6 rounded-[1.5rem] border border-red-50 shadow-sm">
               <h4 className="text-red-700 text-xs tracking-widest uppercase font-bold mb-3 flex items-center gap-2">
                 <AlertTriangle size={16} className="text-red-500" /> Risk Profile
               </h4>
@@ -185,7 +185,7 @@ export default function AIInsightsPanel({ insights }) {
               </p>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-apple">
               <h4 className="text-gray-700 text-xs tracking-widest uppercase font-bold mb-4 flex items-center gap-2">
                 <CheckCircle size={16} className="text-finivis-blue" /> Consultant Tasks
               </h4>
@@ -201,7 +201,7 @@ export default function AIInsightsPanel({ insights }) {
               </ul>
             </div>
 
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white p-6 rounded-[1.5rem] border border-gray-100 shadow-apple">
               <h4 className="text-gray-700 text-xs tracking-widest uppercase font-bold mb-4 flex items-center gap-2">
                 <Code2 size={16} className="text-purple-500" /> Suggested Tech Stack
               </h4>

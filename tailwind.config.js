@@ -8,15 +8,28 @@ export default {
     extend: {
       colors: {
         finivis: {
-          blue: '#1a56cc',
-          red: '#ff3300',
-          dark: '#4a4a4a',
-          light: '#f9f9f9',
-          border: '#e5e7eb'
+          blue: '#007AFF', // iOS System Blue
+          red: '#FF3B30', // iOS System Red
+          dark: '#1d1d1f', // Apple Typography Black
+          light: '#f5f5f7', // Apple Background Light Gray
+          border: '#e5e5ea' // Apple subtle border
         }
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: [
+          '-apple-system', 
+          'BlinkMacSystemFont', 
+          '"SF Pro Text"',
+          '"Segoe UI"', 
+          'Roboto', 
+          '"Helvetica Neue"', 
+          'Arial', 
+          'sans-serif'
+        ],
+      },
+      boxShadow: {
+        'apple': '0 4px 24px -6px rgba(0, 0, 0, 0.04)',
+        'apple-focus': '0 0 0 4px rgba(0, 122, 255, 0.15)',
       }
     },
   },

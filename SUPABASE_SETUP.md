@@ -8,16 +8,30 @@ To complete the Option B implementation, you must create a Supabase project and 
 ```sql
 create table if not exists public.client_submissions (
   id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
   client_name text not null,
-  process_area text not null,
+  client_website text not null,
   opportunities_json jsonb not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Enable RLS and add a policy to allow anyone to insert (since the client form is public)
+-- Enable RLS
 alter table public.client_submissions enable row level security;
-create policy "Allow public inserts" on public.client_submissions for insert with check (true);
-create policy "Allow read access" on public.client_submissions for select using (true);
+
+-- Client can only insert their own submissions
+create policy "Clients can insert own submissions"
+  on public.client_submissions for insert
+  with check (auth.uid() = user_id);
+
+-- Client can view their own submissions
+create policy "Clients can view own submissions"
+  on public.client_submissions for select
+  using (auth.uid() = user_id);
+
+-- Consultants can view all submissions
+create policy "Consultants can view all submissions"
+  on public.client_submissions for select
+  using ( (auth.jwt() -> 'user_metadata' ->> 'role') = 'consultant' );
 ```
 
 3. Go to "Project Settings > API", and copy your `Project URL` and `anon public key`.

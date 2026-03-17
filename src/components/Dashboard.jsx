@@ -1,6 +1,6 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { evaluateOpportunity } from '../utils/EvaluationEngine';
-import { Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, Paperclip } from 'lucide-react';
 import {
   Chart as ChartJS,
   LinearScale,
@@ -128,7 +128,7 @@ export default function Dashboard({ opportunities, processName }) {
 
   return (
     <div className="space-y-8 animate-fade-in fade-in-up">
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-finivis-border">
+      <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-apple border border-gray-100">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-finivis-dark">Evaluation Dashboard</h2>
           <div className="flex gap-3">
@@ -155,24 +155,57 @@ export default function Dashboard({ opportunities, processName }) {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {results.map((r, i) => (
-                <tr key={i} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-3 font-medium text-finivis-dark">{r.name || 'Unnamed Opportunity'}</td>
-                  <td className="p-3"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md">{r.valueScore}</span></td>
-                  <td className="p-3"><span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md">{r.dataScore}</span></td>
-                  <td className="p-3"><span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md">{r.feasibilityScore}</span></td>
-                  <td className="p-3 font-bold">{r.finalScore}</td>
-                  <td className="p-3">
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-                      r.category === 'Quick Win' ? 'bg-green-100 text-green-800' :
-                      r.category === 'Strategic Initiative' ? 'bg-blue-100 text-blue-800' :
-                      r.category === 'Efficiency Play' ? 'bg-yellow-100 text-yellow-800' :
-                      r.category === 'Long-Term Bet' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {r.category}
-                    </span>
-                  </td>
-                </tr>
+                <React.Fragment key={i}>
+                  <tr className="hover:bg-gray-50 transition-colors">
+                    <td className="p-3 font-medium text-finivis-dark">
+                      <div className="flex items-center gap-2">
+                        {r.name || 'Unnamed Opportunity'}
+                        {(r.documents || []).length > 0 && (
+                          <span className="flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                            <Paperclip size={10} />{(r.documents || []).length}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-3"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md">{r.valueScore}</span></td>
+                    <td className="p-3"><span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md">{r.dataScore}</span></td>
+                    <td className="p-3"><span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md">{r.feasibilityScore}</span></td>
+                    <td className="p-3 font-bold">{r.finalScore}</td>
+                    <td className="p-3">
+                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
+                        r.category === 'Quick Win' ? 'bg-green-100 text-green-800' :
+                        r.category === 'Strategic Initiative' ? 'bg-blue-100 text-blue-800' :
+                        r.category === 'Efficiency Play' ? 'bg-yellow-100 text-yellow-800' :
+                        r.category === 'Long-Term Bet' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {r.category}
+                      </span>
+                    </td>
+                  </tr>
+                  {/* Documents sub-row */}
+                  {(r.documents || []).length > 0 && (
+                    <tr className="bg-[#fafbfc]">
+                      <td colSpan={6} className="px-4 py-3">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-semibold text-gray-500 mr-1">Documents:</span>
+                          {(r.documents || []).map((doc, di) => (
+                            <a
+                              key={di}
+                              href={doc.url || '#'}
+                              download={doc.name}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs font-medium text-gray-700 hover:border-finivis-blue hover:text-finivis-blue transition-all group shadow-sm"
+                            >
+                              <FileText size={12} className="text-finivis-blue" />
+                              <span className="max-w-[150px] truncate">{doc.name}</span>
+                              <Download size={10} className="text-gray-400 group-hover:text-finivis-blue" />
+                            </a>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>
@@ -180,32 +213,44 @@ export default function Dashboard({ opportunities, processName }) {
       </div>
 
       <div className="grid md:grid-cols-2 gap-8">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-finivis-border">
-          <h3 className="text-lg font-bold text-finivis-dark mb-4">Priority Quadrant</h3>
+        <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
+          <h3 className="text-xl font-bold text-finivis-dark mb-2">Priority Quadrant</h3>
           <p className="text-sm text-gray-500 mb-4">Top Right = Highest Value and Easiest to Implement.</p>
           <div className="aspect-square">
             <Scatter data={chartData} options={chartOptions} />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-finivis-border">
-          <h3 className="text-lg font-bold text-finivis-dark mb-4">Implementation Guidance</h3>
+        <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
+          <h3 className="text-xl font-bold text-finivis-dark mb-6">Implementation Guidance</h3>
           <div className="space-y-4">
-            <div className="p-4 rounded-xl border-l-4 border-emerald-500 bg-emerald-50">
-              <h4 className="font-semibold text-emerald-900">Quick Wins</h4>
-              <p className="text-sm text-emerald-700 mt-1">High value, high feasibility, good data. Prioritize these for immediate ROI.</p>
+            <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
+              <div className="w-1.5 h-12 rounded-full bg-emerald-500 shrink-0"></div>
+              <div>
+                <h4 className="font-bold text-gray-900">Quick Wins</h4>
+                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">High value, high feasibility, good data. Prioritize these for immediate ROI.</p>
+              </div>
             </div>
-            <div className="p-4 rounded-xl border-l-4 border-blue-500 bg-blue-50">
-              <h4 className="font-semibold text-blue-900">Strategic Initiatives</h4>
-              <p className="text-sm text-blue-700 mt-1">High value but complex to implement. Require careful planning and phased delivery.</p>
+            <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
+              <div className="w-1.5 h-12 rounded-full bg-finivis-blue shrink-0"></div>
+              <div>
+                <h4 className="font-bold text-gray-900">Strategic Initiatives</h4>
+                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">High value but complex to implement. Require careful planning and phased delivery.</p>
+              </div>
             </div>
-            <div className="p-4 rounded-xl border-l-4 border-amber-500 bg-amber-50">
-              <h4 className="font-semibold text-amber-900">Efficiency Plays</h4>
-              <p className="text-sm text-amber-700 mt-1">Medium value, relatively easy. Good for building momentum and reducing simple manual work.</p>
+            <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
+              <div className="w-1.5 h-12 rounded-full bg-amber-500 shrink-0"></div>
+              <div>
+                <h4 className="font-bold text-gray-900">Efficiency Plays</h4>
+                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">Medium value, relatively easy. Good for building momentum and reducing simple manual work.</p>
+              </div>
             </div>
-            <div className="p-4 rounded-xl border-l-4 border-red-500 bg-red-50">
-              <h4 className="font-semibold text-red-900">Long-Term Bets</h4>
-              <p className="text-sm text-red-700 mt-1">Low data readiness or extremely complex. Need data architecture or process standardization first.</p>
+            <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
+              <div className="w-1.5 h-12 rounded-full bg-red-500 shrink-0"></div>
+              <div>
+                <h4 className="font-bold text-gray-900">Long-Term Bets</h4>
+                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">Low data readiness or extremely complex. Need data architecture or process standardization first.</p>
+              </div>
             </div>
           </div>
         </div>
