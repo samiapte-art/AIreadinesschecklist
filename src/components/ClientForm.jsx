@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import OpportunityForm from './OpportunityForm';
-import { Plus, LogOut, Loader2, FilePlus, ChevronRight } from 'lucide-react';
+import { Plus, LogOut, Loader2, FilePlus, ChevronRight, CheckCircle, X } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
 export default function ClientForm({ session }) {
@@ -15,6 +15,7 @@ export default function ClientForm({ session }) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState('');
+  const [isReviewMode, setIsReviewMode] = useState(false);
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -50,6 +51,7 @@ export default function ClientForm({ session }) {
       setOpportunities([{}]);
       setExpandedIndex(0);
       setSubmittedMessage('');
+      setIsReviewMode(false);
     } else {
       // Load existing submission
       setSelectedSubId(sub.id);
@@ -58,6 +60,7 @@ export default function ClientForm({ session }) {
       setOpportunities(sub.opportunities_json || [{}]);
       setExpandedIndex(-1); // Collapse all on load
       setSubmittedMessage('');
+      setIsReviewMode(false);
     }
   };
 
@@ -143,10 +146,8 @@ export default function ClientForm({ session }) {
       console.error(resultError);
     } else {
       setSubmittedMessage('Success! Your assessment has been submitted.');
+      setIsReviewMode(true);
       fetchSubmissions(); // Re-fetch the list to show the new/updated name
-      
-      // Auto-hide success message after 3 seconds
-      setTimeout(() => setSubmittedMessage(''), 3000);
     }
   };
 
@@ -213,8 +214,65 @@ export default function ClientForm({ session }) {
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-6 py-10">
         
-        {/* Success Banner Removed, replaced with Modal below */}
+        {isReviewMode ? (
+          <div className="space-y-6 animate-fade-in fade-in-up">
+            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 md:p-8 text-center relative overflow-hidden">
+               <div className="absolute top-0 right-0 p-4">
+                 <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-2 rounded-full transition-colors" title="Close Review">
+                   <X size={20} />
+                 </button>
+               </div>
+               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
+               <h2 className="text-2xl font-bold text-green-800 mb-2">{submittedMessage || 'Successfully Submitted!'}</h2>
+               <p className="text-green-600 max-w-xl mx-auto">Your assessment for <span className="font-semibold">{clientName || 'the company'}</span> has been saved. Please review the details below.</p>
+            </div>
 
+            <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
+               <div className="flex justify-between items-center border-b border-gray-100 pb-6 mb-6">
+                 <div>
+                   <h3 className="text-xl font-bold text-finivis-dark">{clientName || 'Unnamed Assessment'}</h3>
+                   <p className="text-gray-500 text-sm mt-1">{clientWebsite}</p>
+                 </div>
+                 <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors text-sm">
+                   Edit Assessment
+                 </button>
+               </div>
+
+               <h4 className="font-bold text-gray-900 mb-4 tracking-tight">Process Opportunities ({opportunities.length})</h4>
+               <div className="space-y-4">
+                 {opportunities.map((opp, idx) => (
+                   <div key={idx} className="p-5 rounded-2xl border border-gray-100 bg-gray-50/50">
+                     <div className="flex items-start gap-4">
+                       <div className="w-8 h-8 rounded-full bg-finivis-blue/10 text-finivis-blue flex items-center justify-center font-bold text-sm shrink-0">
+                         {idx + 1}
+                       </div>
+                       <div>
+                         <h5 className="font-bold text-gray-900 text-[15px]">{opp.name || 'Unnamed Opportunity'}</h5>
+                         <p className="text-sm text-gray-600 mt-1.5 leading-relaxed whitespace-pre-wrap">{opp.description || 'No description provided.'}</p>
+                         {opp.businessValue?.length > 0 && (
+                           <div className="flex flex-wrap gap-2 mt-3">
+                             {opp.businessValue.map((bv, i) => (
+                               <span key={i} className="px-2.5 py-1 text-xs font-semibold bg-white border border-gray-200 text-gray-600 rounded-md">
+                                 {bv}
+                               </span>
+                             ))}
+                           </div>
+                         )}
+                       </div>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+            
+            <button 
+              onClick={() => handleSelectSubmission(null)}
+              className="w-full py-4 border-2 border-dashed border-gray-300 rounded-[1.2rem] text-gray-600 font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-all bg-white"
+            >
+              <Plus size={20} /> Start Another Assessment
+            </button>
+          </div>
+        ) : (
         <div className="space-y-8 animate-fade-in fade-in-up">
           <div className="flex items-center justify-between mb-4">
              <h2 className="text-3xl font-extrabold text-finivis-dark">{selectedSubId ? 'Edit Assessment' : 'New Assessment'}</h2>
@@ -284,30 +342,8 @@ export default function ClientForm({ session }) {
             {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : <>Submit <ChevronRight size={16} /></>}
           </button>
         </div>
+        )}
       </main>
-
-      {/* Success Modal */}
-      {submittedMessage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 transform transition-all animate-scale-up">
-            <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mb-4 mx-auto">
-              <div className="w-6 h-6 text-green-600 flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-            </div>
-            <h3 className="text-xl font-bold text-center text-gray-900 mb-2">Success!</h3>
-            <p className="text-gray-600 text-center mb-6">{submittedMessage}</p>
-            <button 
-              onClick={() => setSubmittedMessage('')}
-              className="w-full py-3 bg-finivis-blue text-white rounded-xl font-bold hover:bg-finivis-blue/90 transition-colors"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
