@@ -216,15 +216,19 @@ export default function ClientForm({ session }) {
         
         {isReviewMode ? (
           <div className="space-y-6 animate-fade-in fade-in-up">
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 md:p-8 text-center relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4">
-                 <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-2 rounded-full transition-colors" title="Close Review">
-                   <X size={20} />
-                 </button>
+            <div className="flex items-center justify-between bg-white border border-green-200 rounded-2xl p-4 md:px-6 shadow-sm relative">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-full bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
+                   <CheckCircle size={20} className="text-green-600" />
+                 </div>
+                 <div>
+                   <h2 className="text-base font-bold text-gray-900">{submittedMessage || 'Successfully Submitted'}</h2>
+                   <p className="text-sm text-gray-500">Your assessment for <span className="font-semibold text-gray-700">{clientName || 'the company'}</span> has been saved. Please review below.</p>
+                 </div>
                </div>
-               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
-               <h2 className="text-2xl font-bold text-green-800 mb-2">{submittedMessage || 'Successfully Submitted!'}</h2>
-               <p className="text-green-600 max-w-xl mx-auto">Your assessment for <span className="font-semibold">{clientName || 'the company'}</span> has been saved. Please review the details below.</p>
+               <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-2 rounded-full transition-colors shrink-0" title="Close Review">
+                 <X size={18} />
+               </button>
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
@@ -302,45 +306,50 @@ export default function ClientForm({ session }) {
              </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-finivis-dark">Process Details ({opportunities.length}/5)</h2>
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-finivis-dark">Process Details <span className="text-gray-400 font-medium text-[16px]">({opportunities.length}/5)</span></h2>
             </div>
             
-            {opportunities.map((opp, idx) => (
-              <OpportunityForm 
-                key={idx}
-                index={idx}
-                opp={opp}
-                updateOpp={updateOpp}
-                removeOpp={opportunities.length > 1 ? removeOpportunity : null}
-                isExpanded={expandedIndex === idx}
-                toggleExpand={(i) => setExpandedIndex(expandedIndex === i ? -1 : i)}
-              />
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {opportunities.map((opp, idx) => (
+                <div key={idx} className={expandedIndex === idx ? "col-span-1 md:col-span-2 lg:col-span-3 transition-all" : "transition-all"}>
+                  <OpportunityForm 
+                    index={idx}
+                    opp={opp}
+                    updateOpp={updateOpp}
+                    removeOpp={opportunities.length > 1 ? removeOpportunity : null}
+                    isExpanded={expandedIndex === idx}
+                    toggleExpand={(i) => setExpandedIndex(expandedIndex === i ? -1 : i)}
+                  />
+                </div>
+              ))}
+            </div>
 
             {opportunities.length < 5 && (
               <button 
                 onClick={addOpportunity}
-                className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[1.5rem] text-finivis-blue font-bold flex items-center justify-center gap-2 hover:bg-finivis-blue/5 transition-all bg-white"
+                className="w-full mt-4 py-4 border-2 border-dashed border-gray-200 rounded-[1rem] text-finivis-blue font-bold flex items-center justify-center gap-2 hover:bg-finivis-blue/5 transition-all bg-white text-sm"
               >
-                <Plus size={20} /> Add Another Process Opportunity
+                <Plus size={18} /> Add Another Process Opportunity
               </button>
             )}
           </div>
 
           {/* Submit Button */}
-          <button 
-            disabled={!isFormValid || isSubmitting}
-            onClick={handleSubmit}
-            className={`w-full py-4 rounded-[1.2rem] font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${
-              isFormValid && !isSubmitting
-              ? 'bg-finivis-blue text-white shadow-apple hover:-translate-y-0.5 hover:shadow-lg' 
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-            }`}
-          >
-            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : <>Submit <ChevronRight size={16} /></>}
-          </button>
+          <div className="flex justify-center mt-8">
+            <button 
+              disabled={!isFormValid || isSubmitting}
+              onClick={handleSubmit}
+              className={`px-12 py-3 rounded-full font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${
+                isFormValid && !isSubmitting
+                ? 'bg-[#2970FF] text-white shadow-md hover:-translate-y-0.5 hover:shadow-lg' 
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+              }`}
+            >
+              {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : <>Submit <ChevronRight size={16} /></>}
+            </button>
+          </div>
         </div>
         )}
       </main>
