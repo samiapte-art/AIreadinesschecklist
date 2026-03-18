@@ -104,29 +104,29 @@ export default function OpportunityForm({ opp, index, updateOpp, removeOpp, isEx
   };
 
   return (
-    <div className="bg-white rounded-[1.5rem] shadow-apple border border-gray-100 mb-4 overflow-hidden transition-all duration-300">
+    <div className={`bg-white rounded-[1.2rem] shadow-apple border border-gray-100 overflow-hidden transition-all duration-300 flex flex-col ${isExpanded ? '' : 'h-full'}`}>
       <div 
-        className="flex items-center justify-between p-5 cursor-pointer hover:bg-finivis-light/50 transition-colors"
+        className={`flex items-center justify-between p-4 cursor-pointer hover:bg-finivis-light/50 transition-colors ${isExpanded ? '' : 'flex-1'}`}
         onClick={() => toggleExpand(index)}
       >
-        <div className="flex items-center gap-4">
-          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-finivis-blue/10 text-finivis-blue font-semibold text-sm">
+        <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+          <span className="flex items-center justify-center w-8 h-8 rounded-full bg-finivis-blue/10 text-finivis-blue font-bold text-sm shrink-0">
             {index + 1}
           </span>
-          <h3 className="text-lg font-semibold text-finivis-dark">
+          <h3 className="text-[14px] font-semibold text-finivis-dark truncate">
             {opp.name || `Opportunity ${index + 1}`}
           </h3>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {removeOpp && (
              <button 
                onClick={(e) => { e.stopPropagation(); removeOpp(index); }}
-               className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
+               className="p-1.5 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"
              >
-               <Trash2 size={18} />
+               <Trash2 size={16} />
              </button>
           )}
-          {isExpanded ? <ChevronUp className="text-gray-400" /> : <ChevronDown className="text-gray-400" />}
+          {isExpanded ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
         </div>
       </div>
 

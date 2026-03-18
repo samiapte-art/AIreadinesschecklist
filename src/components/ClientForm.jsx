@@ -303,21 +303,24 @@ export default function ClientForm({ session }) {
           </div>
 
           <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-xl font-bold text-finivis-dark">Process Details ({opportunities.length}/5)</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-finivis-dark">Process Details <span className="text-gray-400 font-medium ml-1">({opportunities.length}/5)</span></h2>
             </div>
             
-            {opportunities.map((opp, idx) => (
-              <OpportunityForm 
-                key={idx}
-                index={idx}
-                opp={opp}
-                updateOpp={updateOpp}
-                removeOpp={opportunities.length > 1 ? removeOpportunity : null}
-                isExpanded={expandedIndex === idx}
-                toggleExpand={(i) => setExpandedIndex(expandedIndex === i ? -1 : i)}
-              />
-            ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {opportunities.map((opp, idx) => (
+                <div key={idx} className={expandedIndex === idx ? "md:col-span-2 lg:col-span-3" : ""}>
+                  <OpportunityForm 
+                    index={idx}
+                    opp={opp}
+                    updateOpp={updateOpp}
+                    removeOpp={opportunities.length > 1 ? removeOpportunity : null}
+                    isExpanded={expandedIndex === idx}
+                    toggleExpand={(i) => setExpandedIndex(expandedIndex === i ? -1 : i)}
+                  />
+                </div>
+              ))}
+            </div>
 
             {opportunities.length < 5 && (
               <button 
