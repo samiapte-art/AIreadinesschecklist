@@ -15,7 +15,6 @@ export default function ClientForm({ session }) {
   const [expandedIndex, setExpandedIndex] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState('');
-  const [isReviewMode, setIsReviewMode] = useState(false);
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -51,7 +50,6 @@ export default function ClientForm({ session }) {
       setOpportunities([{}]);
       setExpandedIndex(0);
       setSubmittedMessage('');
-      setIsReviewMode(false);
     } else {
       // Load existing submission
       setSelectedSubId(sub.id);
@@ -60,7 +58,6 @@ export default function ClientForm({ session }) {
       setOpportunities(sub.opportunities_json || [{}]);
       setExpandedIndex(-1); // Collapse all on load
       setSubmittedMessage('');
-      setIsReviewMode(false);
     }
   };
 
@@ -146,7 +143,6 @@ export default function ClientForm({ session }) {
       console.error(resultError);
     } else {
       setSubmittedMessage('Success! Your assessment has been submitted.');
-      setIsReviewMode(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       fetchSubmissions(); // Re-fetch the list to show the new/updated name
     }
@@ -214,70 +210,24 @@ export default function ClientForm({ session }) {
 
       {/* Main Content */}
       <main className="max-w-5xl mx-auto px-6 py-10">
-        
-        {isReviewMode ? (
-          <div className="space-y-6 animate-fade-in fade-in-up">
-            <div className="bg-white border border-green-200 shadow-sm rounded-2xl p-6 relative flex items-start gap-4">
+        <div className="space-y-8 animate-fade-in fade-in-up">
+          
+          {submittedMessage && (
+            <div className="bg-white border border-green-200 shadow-sm rounded-2xl p-6 relative flex items-start gap-4 animate-fade-in">
                <div className="bg-green-50 text-green-600 rounded-full p-2 shrink-0">
                  <CheckCircle size={24} />
                </div>
                <div className="flex-1 pr-8 text-left">
-                 <h2 className="text-[17px] font-bold text-gray-900 mb-1">{submittedMessage || 'Successfully Submitted!'}</h2>
-                 <p className="text-[14px] text-gray-600">Your assessment for <span className="font-semibold text-gray-900">{clientName || 'the company'}</span> has been saved. Please review the details below.</p>
+                 <h2 className="text-[17px] font-bold text-gray-900 mb-1">{submittedMessage}</h2>
+                 <p className="text-[14px] text-gray-600">Your assessment for <span className="font-semibold text-gray-900">{clientName || 'the company'}</span> has been saved safely.</p>
                </div>
-               <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 bg-gray-50 hover:bg-gray-100 rounded-full" title="Close Review">
+               <button onClick={() => setSubmittedMessage('')} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 bg-gray-50 hover:bg-gray-100 rounded-full" title="Close">
                  <X size={20} />
                </button>
             </div>
+          )}
 
-            <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
-               <div className="flex justify-between items-center border-b border-gray-100 pb-6 mb-6">
-                 <div>
-                   <h3 className="text-xl font-bold text-finivis-dark">{clientName || 'Unnamed Assessment'}</h3>
-                   <p className="text-gray-500 text-sm mt-1">{clientWebsite}</p>
-                 </div>
-                 <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors text-sm">
-                   Edit Assessment
-                 </button>
-               </div>
-
-               <h4 className="font-bold text-gray-900 mb-4 tracking-tight">Process Opportunities ({opportunities.length})</h4>
-               <div className="space-y-4">
-                 {opportunities.map((opp, idx) => (
-                   <div key={idx} className="p-5 rounded-2xl border border-gray-100 bg-gray-50/50">
-                     <div className="flex items-start gap-4">
-                       <div className="w-8 h-8 rounded-full bg-finivis-blue/10 text-finivis-blue flex items-center justify-center font-bold text-sm shrink-0">
-                         {idx + 1}
-                       </div>
-                       <div>
-                         <h5 className="font-bold text-gray-900 text-[15px]">{opp.name || 'Unnamed Opportunity'}</h5>
-                         <p className="text-sm text-gray-600 mt-1.5 leading-relaxed whitespace-pre-wrap">{opp.description || 'No description provided.'}</p>
-                         {opp.businessValue?.length > 0 && (
-                           <div className="flex flex-wrap gap-2 mt-3">
-                             {opp.businessValue.map((bv, i) => (
-                               <span key={i} className="px-2.5 py-1 text-xs font-semibold bg-white border border-gray-200 text-gray-600 rounded-md">
-                                 {bv}
-                               </span>
-                             ))}
-                           </div>
-                         )}
-                       </div>
-                     </div>
-                   </div>
-                 ))}
-               </div>
-            </div>
-            
-            <button 
-              onClick={() => handleSelectSubmission(null)}
-              className="w-full py-4 border-2 border-dashed border-gray-300 rounded-[1.2rem] text-gray-600 font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-all bg-white"
-            >
-              <Plus size={20} /> Start Another Assessment
-            </button>
-          </div>
-        ) : (
-        <div className="space-y-8 animate-fade-in fade-in-up">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 border-b border-gray-100 pb-4">
              <h2 className="text-[28px] font-extrabold text-gray-900">{selectedSubId ? 'Edit Assessment' : 'New Assessment'}</h2>
           </div>
 
@@ -350,7 +300,6 @@ export default function ClientForm({ session }) {
             </button>
           </div>
         </div>
-        )}
       </main>
     </div>
   );
