@@ -147,6 +147,7 @@ export default function ClientForm({ session }) {
     } else {
       setSubmittedMessage('Success! Your assessment has been submitted.');
       setIsReviewMode(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       fetchSubmissions(); // Re-fetch the list to show the new/updated name
     }
   };
@@ -216,15 +217,17 @@ export default function ClientForm({ session }) {
         
         {isReviewMode ? (
           <div className="space-y-6 animate-fade-in fade-in-up">
-            <div className="bg-green-50 border border-green-200 rounded-2xl p-6 md:p-8 text-center relative overflow-hidden">
-               <div className="absolute top-0 right-0 p-4">
-                 <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="text-green-700 hover:text-green-900 bg-green-100 hover:bg-green-200 p-2 rounded-full transition-colors" title="Close Review">
-                   <X size={20} />
-                 </button>
+            <div className="bg-white border border-green-200 shadow-sm rounded-2xl p-6 relative flex items-start gap-4">
+               <div className="bg-green-50 text-green-600 rounded-full p-2 shrink-0">
+                 <CheckCircle size={24} />
                </div>
-               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
-               <h2 className="text-2xl font-bold text-green-800 mb-2">{submittedMessage || 'Successfully Submitted!'}</h2>
-               <p className="text-green-600 max-w-xl mx-auto">Your assessment for <span className="font-semibold">{clientName || 'the company'}</span> has been saved. Please review the details below.</p>
+               <div className="flex-1 pr-8 text-left">
+                 <h2 className="text-[17px] font-bold text-gray-900 mb-1">{submittedMessage || 'Successfully Submitted!'}</h2>
+                 <p className="text-[14px] text-gray-600">Your assessment for <span className="font-semibold text-gray-900">{clientName || 'the company'}</span> has been saved. Please review the details below.</p>
+               </div>
+               <button onClick={() => { setIsReviewMode(false); setSubmittedMessage(''); }} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors p-1 bg-gray-50 hover:bg-gray-100 rounded-full" title="Close Review">
+                 <X size={20} />
+               </button>
             </div>
 
             <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
