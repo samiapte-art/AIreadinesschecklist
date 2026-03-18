@@ -104,7 +104,7 @@ export default function OpportunityForm({ opp, index, updateOpp, removeOpp, isEx
   };
 
   return (
-    <div className={`bg-white rounded-[1.2rem] shadow-apple border border-gray-100 overflow-hidden transition-all duration-300 flex flex-col ${isExpanded ? '' : 'h-full'}`}>
+    <div className={`bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden transition-all duration-300 flex flex-col ${isExpanded ? '' : 'h-full'}`}>
       <div 
         className={`flex items-center justify-between p-4 cursor-pointer hover:bg-finivis-light/50 transition-colors ${isExpanded ? '' : 'flex-1'}`}
         onClick={() => toggleExpand(index)}

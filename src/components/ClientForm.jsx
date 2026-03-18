@@ -277,12 +277,12 @@ export default function ClientForm({ session }) {
           </div>
         ) : (
         <div className="space-y-8 animate-fade-in fade-in-up">
-          <div className="flex items-center justify-between mb-4">
-             <h2 className="text-3xl font-extrabold text-finivis-dark">{selectedSubId ? 'Edit Assessment' : 'New Assessment'}</h2>
+          <div className="flex items-center justify-between mb-6">
+             <h2 className="text-[28px] font-extrabold text-gray-900">{selectedSubId ? 'Edit Assessment' : 'New Assessment'}</h2>
           </div>
 
           {/* Intake Info */}
-          <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100 grid md:grid-cols-2 gap-6">
+          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 grid md:grid-cols-2 gap-6">
              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Company Name</label>
                 <input 
@@ -305,9 +305,9 @@ export default function ClientForm({ session }) {
              </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 mt-8">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-finivis-dark">Process Details <span className="text-gray-400 font-medium ml-1">({opportunities.length}/5)</span></h2>
+              <h2 className="text-xl font-bold text-gray-900">Process Details <span className="text-gray-400 font-medium ml-1">({opportunities.length}/5)</span></h2>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -328,7 +328,7 @@ export default function ClientForm({ session }) {
             {opportunities.length < 5 && (
               <button 
                 onClick={addOpportunity}
-                className="w-full py-5 border-2 border-dashed border-gray-300 rounded-[1.5rem] text-finivis-blue font-bold flex items-center justify-center gap-2 hover:bg-finivis-blue/5 transition-all bg-white"
+                className="w-full py-4 border-2 border-dashed border-gray-300 rounded-[1.2rem] text-finivis-blue font-bold flex items-center justify-center gap-2 hover:bg-finivis-blue/5 transition-all bg-white"
               >
                 <Plus size={20} /> Add Another Process Opportunity
               </button>
@@ -336,17 +336,19 @@ export default function ClientForm({ session }) {
           </div>
 
           {/* Submit Button */}
-          <button 
-            disabled={!isFormValid || isSubmitting}
-            onClick={handleSubmit}
-            className={`w-full py-4 rounded-[1.2rem] font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${
-              isFormValid && !isSubmitting
-              ? 'bg-finivis-blue text-white shadow-apple hover:-translate-y-0.5 hover:shadow-lg' 
-              : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
-            }`}
-          >
-            {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : <>Submit <ChevronRight size={16} /></>}
-          </button>
+          <div className="flex justify-center pt-4">
+            <button 
+              disabled={!isFormValid || isSubmitting}
+              onClick={handleSubmit}
+              className={`px-12 py-3.5 rounded-full font-bold text-[15px] transition-all flex items-center justify-center gap-2 ${
+                isFormValid && !isSubmitting
+                ? 'bg-finivis-blue text-white shadow-md hover:-translate-y-0.5 hover:shadow-lg' 
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
+              }`}
+            >
+              {isSubmitting ? <><Loader2 size={16} className="animate-spin" /> Submitting...</> : <>Submit <ChevronRight size={16} /></>}
+            </button>
+          </div>
         </div>
         )}
       </main>
