@@ -148,6 +148,7 @@ export default function ClientForm({ session }) {
       setSubmittedMessage('Success! Your assessment has been submitted.');
       setIsReviewMode(true);
       fetchSubmissions(); // Re-fetch the list to show the new/updated name
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' }); // Scroll to top to ensure success message is visible
     }
   };
 
