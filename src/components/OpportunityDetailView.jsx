@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, ArrowLeft, Zap, Shield, Database, BarChart3, 
-  MessageSquare, Layout, Server, ClipboardList, 
+import {
+  X, ArrowLeft, Zap, Shield, Database, BarChart3,
+  MessageSquare, Layout, Server, ClipboardList,
   TrendingUp, Loader2, Info, AlertTriangle, CheckCircle,
-  Calendar, Users, FileCheck, ListChecks
+  Calendar, Users, FileCheck, ListChecks, Layers
 } from 'lucide-react';
 import { getOpportunityPreReqs } from '../utils/aiAnalyzer';
 
 /**
- * OpportunityDetailView - A high-fidelity, deep-dive screen for a single AI opportunity.
- * Updated to focus on Challenge Matrix first and Client Pre-requisites.
+ * OpportunityDetailView - Deep-dive screen for a single AI opportunity.
+ * Now renders all sections dynamically from AI evaluation data.
  */
 export default function OpportunityDetailView({ evaluatedOpp, clientName, onClose, onSaveRoadmap }) {
   const [schedule, setSchedule] = useState(evaluatedOpp.persisted_roadmap || null);
@@ -17,7 +17,6 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // If we already have a persisted roadmap, don't re-fetch
     if (evaluatedOpp.persisted_roadmap) {
       setSchedule(evaluatedOpp.persisted_roadmap);
       setLoading(false);
@@ -29,7 +28,6 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
         setLoading(true);
         const data = await getOpportunityPreReqs(evaluatedOpp, clientName);
         setSchedule(data);
-        // Persist the freshly generated roadmap
         if (onSaveRoadmap) {
           onSaveRoadmap(data);
         }
@@ -45,27 +43,48 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
 
   const { scores, priority, challenges, effort, confidence, tags } = evaluatedOpp;
 
+  // Derive dynamic phases from scope or use sensible defaults
+  const phases = evaluatedOpp.scope?.phases || [
+    { phase: 'Phase 1', title: 'Process standardization', desc: 'Aligning business logic and manual approval chains.' },
+    { phase: 'Phase 2', title: 'Data preparation', desc: 'Centralizing scattered datasets and historical records.' },
+    { phase: 'Phase 3', title: 'AI automation', desc: 'Deploying AI-driven decision support and extraction.' },
+    { phase: 'Phase 4', title: 'Workflow deployment', desc: 'Full integration with existing systems.' }
+  ];
+
+  // Dynamic challenge categories for the deep-dive grid
+  const challengeCategories = [
+    { key: 'data', label: 'DATA', color: 'text-purple-400' },
+    { key: 'process', label: 'PROCESS', color: 'text-blue-400' },
+    { key: 'value', label: 'VALUE', color: 'text-orange-400' },
+    { key: 'feasibility', label: 'FEASIBILITY', color: 'text-red-400' }
+  ];
+
+  const archStack = evaluatedOpp.scope?.architectureStack;
+
+  function getPriorityStyle(p) {
+    if (p === 'High Priority' || p === 'HIGH') return 'bg-green-50 text-green-700 border-green-100';
+    if (p === 'Good Candidate' || p === 'MEDIUM') return 'bg-blue-50 text-blue-700 border-blue-100';
+    if (p === 'Experimental' || p === 'LOW') return 'bg-yellow-50 text-yellow-700 border-yellow-100';
+    return 'bg-red-50 text-red-700 border-red-100';
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-[#F5F7FA] overflow-y-auto animate-fade-in">
       {/* Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10 flex items-center justify-between">
-        <button 
+        <button
           onClick={onClose}
           className="flex items-center gap-2 text-gray-500 hover:text-finivis-dark transition-all font-medium"
         >
           <ArrowLeft size={18} /> Back to Dashboard
         </button>
         <div className="flex items-center gap-3">
-           <span className={`px-3 py-1 text-xs font-bold rounded-full border ${
-              priority === 'HIGH' ? 'bg-green-50 text-green-700 border-green-100' :
-              priority === 'MEDIUM' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-              'bg-yellow-50 text-yellow-700 border-yellow-100'
-           }`}>
-             {priority} PRIORITY
-           </span>
-           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-400">
-             <X size={20} />
-           </button>
+          <span className={`px-3 py-1 text-xs font-bold rounded-full border ${getPriorityStyle(priority)}`}>
+            {priority}
+          </span>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-400">
+            <X size={20} />
+          </button>
         </div>
       </div>
 
@@ -75,11 +94,11 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
             {evaluatedOpp.opportunityName}
           </h1>
           <div className="flex flex-wrap gap-2 mb-4">
-             {tags?.map(tag => (
-               <span key={tag} className="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-600 shadow-sm">
-                 {tag}
-               </span>
-             ))}
+            {tags?.map(tag => (
+              <span key={tag} className="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-600 shadow-sm">
+                {tag}
+              </span>
+            ))}
           </div>
           <p className="text-lg text-gray-500 max-w-3xl leading-relaxed">
             {evaluatedOpp.description}
@@ -88,164 +107,217 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
 
         {/* 1. CHALLENGE MATRIX AT THE TOP */}
         <div className="mb-8">
-           <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <AlertTriangle size={20} className="text-amber-500" /> Critical Challenge Matrix
-              </h3>
-              
-              <div className="grid md:grid-cols-3 gap-6">
-                 <ChallengeCard 
-                   title="Data Pipeline" 
-                   icon={<Database size={16} />} 
-                   items={challenges.data} 
-                   detail={schedule?.dataRequirements?.[0]}
-                 />
-                 <ChallengeCard 
-                   title="Process Maturity" 
-                   icon={<ClipboardList size={16} />} 
-                   items={challenges.process}
-                   detail={schedule?.stakeholderChecklist?.[0]}
-                 />
-                 <ChallengeCard 
-                   title="Tech Integration" 
-                   icon={<Server size={16} />} 
-                   items={challenges.feasibility}
-                   detail={schedule?.stakeholderChecklist?.[1]}
-                 />
-              </div>
-           </div>
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100">
+            <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+              <AlertTriangle size={20} className="text-amber-500" /> Critical Challenge Matrix
+            </h3>
+
+            <div className="grid md:grid-cols-4 gap-6">
+              <ChallengeCard
+                title="Data Pipeline"
+                icon={<Database size={16} />}
+                items={challenges?.data || []}
+                detail={schedule?.dataRequirements?.[0]}
+              />
+              <ChallengeCard
+                title="Process Maturity"
+                icon={<ClipboardList size={16} />}
+                items={challenges?.process || []}
+                detail={schedule?.stakeholderChecklist?.[0]}
+              />
+              <ChallengeCard
+                title="Value Realization"
+                icon={<TrendingUp size={16} />}
+                items={challenges?.value || []}
+                detail={null}
+              />
+              <ChallengeCard
+                title="Tech Integration"
+                icon={<Server size={16} />}
+                items={challenges?.feasibility || []}
+                detail={schedule?.stakeholderChecklist?.[1]}
+              />
+            </div>
+          </div>
         </div>
 
         {/* 2. STRATEGIC OUTCOME REPORT */}
         <div className="mb-8">
-           <div className="bg-finivis-dark text-white p-8 rounded-[2.5rem] shadow-2xl border border-gray-800 relative overflow-hidden">
-              <div className="absolute top-0 right-0 p-12 opacity-10">
-                 <Sparkles size={120} />
+          <div className="bg-finivis-dark text-white p-8 rounded-[2.5rem] shadow-2xl border border-gray-800 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-12 opacity-10">
+              <SparklesIcon size={120} />
+            </div>
+
+            <div className="relative z-10">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pb-6 border-b border-gray-700/50">
+                <div>
+                  <h3 className="text-2xl font-black tracking-tight mb-2 flex items-center gap-3">
+                    <div className="w-8 h-8 bg-finivis-red rounded-lg flex items-center justify-center">
+                      <Zap size={18} className="text-white" />
+                    </div>
+                    Strategic Outcome Report
+                  </h3>
+                  <p className="text-gray-400 text-sm font-medium">High-level executive summary and implementation roadmap</p>
+                </div>
+                <div className="flex gap-4">
+                  <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">ROI Timeline</p>
+                    <p className="font-bold text-finivis-red">{evaluatedOpp.roiTimeline || effort || '6–9 months'}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
+                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Complexity</p>
+                    <p className={`font-bold ${evaluatedOpp.complexity === 'HIGH' ? 'text-red-400' : evaluatedOpp.complexity === 'LOW' ? 'text-green-400' : 'text-blue-400'}`}>
+                      {evaluatedOpp.complexity || 'Medium'}
+                    </p>
+                  </div>
+                </div>
               </div>
-              
-              <div className="relative z-10">
-                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pb-6 border-b border-gray-700/50">
-                    <div>
-                       <h3 className="text-2xl font-black tracking-tight mb-2 flex items-center gap-3">
-                         <div className="w-8 h-8 bg-finivis-red rounded-lg flex items-center justify-center">
-                            <Zap size={18} className="text-white" />
-                         </div>
-                         Strategic Outcome Report
-                       </h3>
-                       <p className="text-gray-400 text-sm font-medium">High-level executive summary and implementation roadmap</p>
-                    </div>
-                    <div className="flex gap-4">
-                       <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
-                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">ROI Timeline</p>
-                          <p className="font-bold text-finivis-red">6–9 months</p>
-                       </div>
-                       <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
-                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Complexity</p>
-                          <p className="font-bold text-blue-400">Medium</p>
-                       </div>
-                    </div>
-                 </div>
 
-                 <div className="grid lg:grid-cols-2 gap-12">
-                    {/* Recommended Scope */}
-                    <div>
-                       <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                         <TrendingUp size={14} className="text-finivis-red" /> Recommended Implementation Scope
-                       </h4>
-                       <div className="space-y-4">
-                          {[
-                            { phase: 'Phase 1', title: 'Process standardization', desc: 'Aligning business logic and manual approval chains.' },
-                            { phase: 'Phase 2', title: 'Data preparation', desc: 'Centralizing scattered datasets and historical records.' },
-                            { phase: 'Phase 3', title: 'AI automation', desc: 'Deploying LLM-driven decision support and extraction.' },
-                            { phase: 'Phase 4', title: 'Workflow deployment', desc: 'Full integration with existing ERP/Software stack.' }
-                          ].map((step, i) => (
-                             <div key={i} className="flex gap-4 group">
-                                <div className="flex flex-col items-center">
-                                   <div className="w-6 h-6 rounded-full bg-finivis-red flex items-center justify-center text-[10px] font-black shrink-0 z-10">
-                                      {i + 1}
-                                   </div>
-                                   {i < 3 && <div className="w-0.5 h-full bg-gray-800 -mt-1 mb-1"></div>}
-                                </div>
-                                <div className="pb-4">
-                                   <p className="text-[10px] font-black text-finivis-red uppercase mb-0.5">{step.phase}</p>
-                                   <h5 className="font-bold text-white text-sm mb-1">{step.title}</h5>
-                                   <p className="text-xs text-gray-400 leading-relaxed">{step.desc}</p>
-                                </div>
-                             </div>
-                          ))}
-                       </div>
-                    </div>
-
-                    {/* Challenge Summary & Automation Type */}
-                    <div className="space-y-8">
-                       <div>
-                          <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Key Challenge Deep-Dive</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                                <p className="text-[10px] font-black text-purple-400 uppercase mb-2">DATA</p>
-                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
-                                   <li>• Data scattered</li>
-                                   <li>• Missing history</li>
-                                </ul>
-                             </div>
-                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                                <p className="text-[10px] font-black text-blue-400 uppercase mb-2">PROCESS</p>
-                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
-                                   <li>• Manual approvals</li>
-                                   <li>• No SOP</li>
-                                </ul>
-                             </div>
-                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                                <p className="text-[10px] font-black text-orange-400 uppercase mb-2">VALUE</p>
-                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
-                                   <li>• Integration effort</li>
-                                </ul>
-                             </div>
-                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                                <p className="text-[10px] font-black text-red-400 uppercase mb-2">FEASIBILITY</p>
-                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
-                                   <li>• Exception complexity</li>
-                                </ul>
-                             </div>
+              <div className="grid lg:grid-cols-2 gap-12">
+                {/* Recommended Scope — Dynamic Phases */}
+                <div>
+                  <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <TrendingUp size={14} className="text-finivis-red" /> Recommended Implementation Scope
+                  </h4>
+                  {evaluatedOpp.scope?.objective && (
+                    <p className="text-sm text-gray-400 mb-6 italic">"{evaluatedOpp.scope.objective}"</p>
+                  )}
+                  <div className="space-y-4">
+                    {phases.map((step, i) => (
+                      <div key={i} className="flex gap-4 group">
+                        <div className="flex flex-col items-center">
+                          <div className="w-6 h-6 rounded-full bg-finivis-red flex items-center justify-center text-[10px] font-black shrink-0 z-10">
+                            {i + 1}
                           </div>
-                       </div>
+                          {i < phases.length - 1 && <div className="w-0.5 h-full bg-gray-800 -mt-1 mb-1"></div>}
+                        </div>
+                        <div className="pb-4">
+                          <p className="text-[10px] font-black text-finivis-red uppercase mb-0.5">{step.phase || `Phase ${i + 1}`}</p>
+                          <h5 className="font-bold text-white text-sm mb-1">{step.title || step.name}</h5>
+                          <p className="text-xs text-gray-400 leading-relaxed">{step.desc || step.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                       <div className="p-6 bg-gradient-to-br from-finivis-red/20 to-transparent border border-finivis-red/30 rounded-3xl">
-                          <h4 className="text-xs font-black text-finivis-red uppercase tracking-widest mb-2">Automation Type</h4>
-                          <p className="text-xl font-black text-white">AI + Workflow automation</p>
-                          <p className="text-xs text-gray-400 mt-2 font-medium">Standardizing decision-making with LLM enrichment and automated task routing.</p>
-                       </div>
+                {/* Challenge Summary & Automation Type */}
+                <div className="space-y-8">
+                  <div>
+                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Key Challenge Deep-Dive</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {challengeCategories.map(cat => (
+                        <div key={cat.key} className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                          <p className={`text-[10px] font-black ${cat.color} uppercase mb-2`}>{cat.label}</p>
+                          <ul className="text-xs text-gray-300 space-y-1 font-medium">
+                            {(challenges?.[cat.key] || []).length > 0
+                              ? (challenges[cat.key]).slice(0, 3).map((item, idx) => (
+                                <li key={idx}>• {item}</li>
+                              ))
+                              : <li className="text-green-400 text-[10px]">No major challenges</li>
+                            }
+                          </ul>
+                        </div>
+                      ))}
                     </div>
-                 </div>
+                  </div>
+
+                  <div className="p-6 bg-gradient-to-br from-finivis-red/20 to-transparent border border-finivis-red/30 rounded-3xl">
+                    <h4 className="text-xs font-black text-finivis-red uppercase tracking-widest mb-2">Automation Type</h4>
+                    <p className="text-xl font-black text-white">{evaluatedOpp.automationType || 'AI + Workflow Automation'}</p>
+                    {evaluatedOpp.scope?.automationCoverage && (
+                      <div className="mt-3 flex flex-wrap gap-1.5">
+                        {evaluatedOpp.scope.automationCoverage.map((item, i) => (
+                          <span key={i} className="text-[10px] px-2 py-0.5 bg-white/10 text-gray-300 rounded-full border border-white/10">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-           </div>
+
+              {/* Architecture Stack — New section */}
+              {archStack && (
+                <div className="mt-10 pt-8 border-t border-gray-700/50">
+                  <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                    <Layers size={14} className="text-finivis-red" /> Recommended Architecture Stack
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {[
+                      { label: 'Data Layer', value: archStack.dataLayer, icon: <Database size={14} /> },
+                      { label: 'AI Layer', value: archStack.aiLayer, icon: <Zap size={14} /> },
+                      { label: 'Automation', value: archStack.automationLayer, icon: <Server size={14} /> },
+                      { label: 'Interface', value: archStack.interface, icon: <Layout size={14} /> },
+                      { label: 'Monitoring', value: archStack.monitoring, icon: <BarChart3 size={14} /> }
+                    ].map((layer, i) => (
+                      <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                        <div className="flex items-center gap-1.5 mb-2 text-gray-400">
+                          {layer.icon}
+                          <p className="text-[10px] font-black uppercase">{layer.label}</p>
+                        </div>
+                        <p className="text-xs text-gray-300 font-medium leading-relaxed">{layer.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          
+
           {/* Left Column: Metrics & Scores */}
           <div className="lg:col-span-1 space-y-6">
             <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <BarChart3 size={18} className="text-finivis-blue" /> Framework Scores
               </h3>
-              
+
               <div className="space-y-6">
                 <ScoreBar label="Business Value" value={scores.value} color="bg-finivis-blue" />
                 <ScoreBar label="Data Readiness" value={scores.data} color="bg-purple-500" />
                 <ScoreBar label="Tech Feasibility" value={scores.feasibility} color="bg-orange-500" />
                 <ScoreBar label="Risk Resilience" value={scores.risk} color="bg-finivis-red" />
-                
+
                 <div className="pt-6 border-t border-gray-100">
-                   <div className="flex justify-between items-end mb-2">
-                      <span className="text-sm font-bold text-gray-400">OVERALL READINESS</span>
-                      <span className="text-3xl font-black text-finivis-dark">{scores.overall}%</span>
-                   </div>
-                   <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                      <div className="h-full bg-finivis-dark transition-all duration-1000" style={{ width: `${scores.overall}%` }}></div>
-                   </div>
+                  <div className="flex justify-between items-end mb-2">
+                    <span className="text-sm font-bold text-gray-400">OVERALL READINESS</span>
+                    <span className="text-3xl font-black text-finivis-dark">{scores.overall}%</span>
+                  </div>
+                  <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
+                    <div className="h-full bg-finivis-dark transition-all duration-1000" style={{ width: `${scores.overall}%` }}></div>
+                  </div>
                 </div>
               </div>
+
+              {/* Data Sub-Scores (AI mode only) */}
+              {evaluatedOpp.dataSubScores && (
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Data Quality Breakdown</h4>
+                  <div className="space-y-3">
+                    {[
+                      { label: 'Availability', value: evaluatedOpp.dataSubScores.availability },
+                      { label: 'Structure', value: evaluatedOpp.dataSubScores.structure },
+                      { label: 'Completeness', value: evaluatedOpp.dataSubScores.completeness },
+                      { label: 'Accessibility', value: evaluatedOpp.dataSubScores.accessibility },
+                      { label: 'Consistency', value: evaluatedOpp.dataSubScores.consistency }
+                    ].map((dim, i) => (
+                      <div key={i} className="flex items-center justify-between">
+                        <span className="text-xs text-gray-500 font-medium">{dim.label}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                            <div className="h-full bg-purple-400 rounded-full" style={{ width: `${(dim.value / 5) * 100}%` }}></div>
+                          </div>
+                          <span className="text-xs font-bold text-gray-700 w-4 text-right">{dim.value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-finivis-dark text-white p-8 rounded-[2.5rem] border border-gray-800 shadow-xl">
@@ -254,112 +326,117 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
                 <h3 className="text-lg font-bold">Quick Insights</h3>
               </div>
               <div className="space-y-4">
-                 <div className="flex justify-between border-b border-gray-700 pb-3">
-                    <span className="text-gray-400 text-sm">Target Effort</span>
-                    <span className="font-bold">{effort}</span>
-                 </div>
-                 <div className="flex justify-between border-b border-gray-700 pb-3">
-                    <span className="text-gray-400 text-sm">Automation Confidence</span>
-                    <span className="font-bold text-green-400">{confidence}%</span>
-                 </div>
-                 <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">Complexity</span>
-                    <span className={`font-bold ${evaluatedOpp.complexity === 'HIGH' ? 'text-red-400' : 'text-blue-400'}`}>
-                      {evaluatedOpp.complexity}
-                    </span>
-                 </div>
+                <div className="flex justify-between border-b border-gray-700 pb-3">
+                  <span className="text-gray-400 text-sm">Target Effort</span>
+                  <span className="font-bold">{effort}</span>
+                </div>
+                <div className="flex justify-between border-b border-gray-700 pb-3">
+                  <span className="text-gray-400 text-sm">Automation Confidence</span>
+                  <span className="font-bold text-green-400">{confidence}%</span>
+                </div>
+                <div className="flex justify-between border-b border-gray-700 pb-3">
+                  <span className="text-gray-400 text-sm">Complexity</span>
+                  <span className={`font-bold ${evaluatedOpp.complexity === 'HIGH' ? 'text-red-400' : evaluatedOpp.complexity === 'LOW' ? 'text-green-400' : 'text-blue-400'}`}>
+                    {evaluatedOpp.complexity}
+                  </span>
+                </div>
+                {evaluatedOpp.roiTimeline && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-400 text-sm">ROI Timeline</span>
+                    <span className="font-bold text-finivis-red">{evaluatedOpp.roiTimeline}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Right Column: Pre-automation Schedule */}
           <div className="lg:col-span-2 space-y-8">
-            
+
             <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100 min-h-[400px]">
               <div className="flex items-center justify-between mb-6">
-                 <div>
-                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                      <ListChecks size={20} className="text-finivis-blue" /> Client Pre-Automation Roadmap
-                    </h3>
-                    <p className="text-xs text-gray-400 font-medium mt-1">Steps required BEFORE Project Commencement</p>
-                 </div>
+                <div>
+                  <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <ListChecks size={20} className="text-finivis-blue" /> Client Pre-Automation Roadmap
+                  </h3>
+                  <p className="text-xs text-gray-400 font-medium mt-1">Steps required BEFORE Project Commencement</p>
+                </div>
                 {loading && <Loader2 size={20} className="animate-spin text-finivis-blue" />}
               </div>
 
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                   <Loader2 size={40} className="animate-spin mb-4" />
-                   <p className="font-medium">Curating readiness checklist...</p>
+                  <Loader2 size={40} className="animate-spin mb-4" />
+                  <p className="font-medium">Curating readiness checklist...</p>
                 </div>
               ) : error ? (
                 <div className="text-center py-20">
-                   <AlertTriangle size={40} className="text-amber-500 mx-auto mb-4" />
-                   <p className="text-gray-600">{error}</p>
+                  <AlertTriangle size={40} className="text-amber-500 mx-auto mb-4" />
+                  <p className="text-gray-600">{error}</p>
                 </div>
               ) : (
                 <div className="space-y-8 animate-fade-in">
-                   <div className="p-6 rounded-2xl bg-finivis-blue/5 border border-finivis-blue/10">
-                      <h4 className="text-[10px] font-black text-finivis-blue uppercase tracking-widest mb-1 text-center">EXECUTIVE READINESS SUMMARY</h4>
-                      <p className="text-gray-800 font-medium text-center leading-relaxed">"{schedule.clientExecutiveSummary}"</p>
-                   </div>
+                  <div className="p-6 rounded-2xl bg-finivis-blue/5 border border-finivis-blue/10">
+                    <h4 className="text-[10px] font-black text-finivis-blue uppercase tracking-widest mb-1 text-center">EXECUTIVE READINESS SUMMARY</h4>
+                    <p className="text-gray-800 font-medium text-center leading-relaxed">"{schedule.clientExecutiveSummary}"</p>
+                  </div>
 
-                   <div>
-                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <Calendar size={14} /> STEP-BY-STEP READINESS SCHEDULE
+                  <div>
+                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                      <Calendar size={14} /> STEP-BY-STEP READINESS SCHEDULE
+                    </h4>
+                    <div className="space-y-4">
+                      {schedule.preAutomationTasks.map((item, idx) => (
+                        <div key={idx} className="flex gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-finivis-blue group transition-all">
+                          <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-sm font-black text-finivis-blue shrink-0 shadow-sm group-hover:scale-110 transition-transform">
+                            {idx + 1}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start mb-1">
+                              <h5 className="font-bold text-gray-900">{item.task}</h5>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${item.importance === 'Critical' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                }`}>
+                                {item.importance}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-2 leading-relaxed">{item.description}</p>
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                              <Users size={10} /> Owner: {item.owner}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <Database size={14} /> DATA REQUIREMENTS
                       </h4>
-                      <div className="space-y-4">
-                         {schedule.preAutomationTasks.map((item, idx) => (
-                           <div key={idx} className="flex gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-finivis-blue group transition-all">
-                              <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-sm font-black text-finivis-blue shrink-0 shadow-sm group-hover:scale-110 transition-transform">
-                                 {idx + 1}
-                              </div>
-                              <div className="flex-1">
-                                 <div className="flex justify-between items-start mb-1">
-                                    <h5 className="font-bold text-gray-900">{item.task}</h5>
-                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${
-                                       item.importance === 'Critical' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                                    }`}>
-                                       {item.importance}
-                                    </span>
-                                 </div>
-                                 <p className="text-xs text-gray-500 mb-2 leading-relaxed">{item.description}</p>
-                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
-                                    <Users size={10} /> Owner: {item.owner}
-                                 </div>
-                              </div>
-                           </div>
-                         ))}
-                      </div>
-                   </div>
-
-                   <div className="grid md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                         <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                           <Database size={14} /> DATA REQUIREMENTS
-                         </h4>
-                         <ul className="space-y-2">
-                            {schedule.dataRequirements.map((req, i) => (
-                              <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                                 <div className="w-1.5 h-1.5 rounded-full bg-finivis-blue"></div>
-                                 {req}
-                              </li>
-                            ))}
-                         </ul>
-                      </div>
-                      <div className="space-y-4">
-                         <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                           <FileCheck size={14} /> STAKEHOLDER CHECKLIST
-                         </h4>
-                         <ul className="space-y-2">
-                            {schedule.stakeholderChecklist.map((item, i) => (
-                              <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium whitespace-nowrap">
-                                 <CheckCircle size={14} className="text-green-500" />
-                                 {item}
-                              </li>
-                            ))}
-                         </ul>
-                      </div>
-                   </div>
+                      <ul className="space-y-2">
+                        {schedule.dataRequirements.map((req, i) => (
+                          <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                            <div className="w-1.5 h-1.5 rounded-full bg-finivis-blue"></div>
+                            {req}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="space-y-4">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <FileCheck size={14} /> STAKEHOLDER CHECKLIST
+                      </h4>
+                      <ul className="space-y-2">
+                        {schedule.stakeholderChecklist.map((item, i) => (
+                          <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium whitespace-nowrap">
+                            <CheckCircle size={14} className="text-green-500" />
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -388,48 +465,49 @@ function ScoreBar({ label, value, color }) {
 function ChallengeCard({ title, icon, items, detail }) {
   return (
     <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 h-full flex flex-col">
-       <div className="flex items-center gap-2 mb-3 text-gray-900">
-          <div className="p-1.5 bg-white rounded-lg shadow-sm border border-gray-200">
-             {icon}
-          </div>
-          <h5 className="font-bold text-sm">{title}</h5>
-       </div>
-       <ul className="space-y-2 mb-3">
-          {items.length > 0 ? items.map((item, idx) => (
-            <li key={idx} className="flex gap-2 text-xs text-gray-600 line-clamp-2">
-               <span className="text-amber-500">•</span> {item}
-            </li>
-          )) : (
-            <li className="text-[10px] text-green-600 font-bold flex items-center gap-1">
-               <CheckCircle size={10} /> No Major Challenges
-            </li>
-          )}
-       </ul>
-       {detail && (
-         <div className="mt-auto pt-3 border-t border-gray-200 text-[10px] text-gray-400 italic font-medium">
-            AI Insight: {detail}
-         </div>
-       )}
+      <div className="flex items-center gap-2 mb-3 text-gray-900">
+        <div className="p-1.5 bg-white rounded-lg shadow-sm border border-gray-200">
+          {icon}
+        </div>
+        <h5 className="font-bold text-sm">{title}</h5>
+      </div>
+      <ul className="space-y-2 mb-3">
+        {items.length > 0 ? items.map((item, idx) => (
+          <li key={idx} className="flex gap-2 text-xs text-gray-600 line-clamp-2">
+            <span className="text-amber-500">•</span> {item}
+          </li>
+        )) : (
+          <li className="text-[10px] text-green-600 font-bold flex items-center gap-1">
+            <CheckCircle size={10} /> No Major Challenges
+          </li>
+        )}
+      </ul>
+      {detail && (
+        <div className="mt-auto pt-3 border-t border-gray-200 text-[10px] text-gray-400 italic font-medium">
+          AI Insight: {detail}
+        </div>
+      )}
     </div>
   );
 }
 
-const Sparkles = ({ size, className }) => (
-  <svg 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
+const SparklesIcon = ({ size, className }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
     className={className}
   >
-    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
-    <path d="M5 3v4"/>
-    <path d="M19 17v4"/>
-    <path d="M3 5h4"/>
-    <path d="M17 19h4"/>
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    <path d="M5 3v4" />
+    <path d="M19 17v4" />
+    <path d="M3 5h4" />
+    <path d="M17 19h4" />
   </svg>
 );
+

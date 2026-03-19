@@ -17,6 +17,18 @@
       "condition": "no_documents",
       "output": "Missing process documentation may hide edge cases and data anomalies.",
       "type": "data_challenge"
+    },
+    {
+      "id": "DATA_004",
+      "condition": "data_availability < 3",
+      "output": "Unstructured document processing requires OCR/LLM parsing pipeline.",
+      "type": "data_challenge"
+    },
+    {
+      "id": "DATA_005",
+      "condition": "maturity < 3",
+      "output": "No digital audit trail exists for the current process — manual data reconstruction needed.",
+      "type": "data_challenge"
     }
   ],
   "processRules": [
@@ -31,6 +43,24 @@
       "condition": "frequency == 'Rare'",
       "output": "Low frequency limits the ROI and data gathering opportunities.",
       "type": "process_challenge"
+    },
+    {
+      "id": "PROC_003",
+      "condition": "maturity < 3",
+      "output": "Heavy dependency on manual judgment increases AI confidence threshold requirements.",
+      "type": "process_challenge"
+    },
+    {
+      "id": "PROC_004",
+      "condition": "systems_count > 2",
+      "output": "No centralized workflow tracking system — process visibility challenge.",
+      "type": "process_challenge"
+    },
+    {
+      "id": "PROC_005",
+      "condition": "no_documents",
+      "output": "Exception handling paths are not documented — edge cases may surface post-deployment.",
+      "type": "process_challenge"
     }
   ],
   "valueRules": [
@@ -39,6 +69,24 @@
       "condition": "no_kpi",
       "output": "Undefined KPIs make it difficult to measure automation success and ROI.",
       "type": "value_challenge"
+    },
+    {
+      "id": "VAL_002",
+      "condition": "frequency == 'Rare'",
+      "output": "Low process frequency may limit return on investment.",
+      "type": "value_challenge"
+    },
+    {
+      "id": "VAL_003",
+      "condition": "systems_count > 3",
+      "output": "Integration complexity may delay time-to-value and increase implementation cost.",
+      "type": "value_challenge"
+    },
+    {
+      "id": "VAL_004",
+      "condition": "data_availability < 4",
+      "output": "AI accuracy risk — dependent on significant data cleanup before value realization.",
+      "type": "value_challenge"
     }
   ],
   "feasibilityRules": [
@@ -46,6 +94,18 @@
       "id": "FEAS_001",
       "condition": "systems_count > 4",
       "output": "High number of system integrations significantly increases technical risk.",
+      "type": "feasibility_challenge"
+    },
+    {
+      "id": "FEAS_002",
+      "condition": "maturity < 3",
+      "output": "Process requires subjective human judgment — AI confidence thresholds and fallback logic needed.",
+      "type": "feasibility_challenge"
+    },
+    {
+      "id": "FEAS_003",
+      "condition": "data_availability < 3",
+      "output": "High exception rate expected from poor data quality — sophisticated fallback logic required.",
       "type": "feasibility_challenge"
     }
   ]
