@@ -85,3 +85,53 @@ Respond ONLY with a valid JSON object matching exactly this structure, with no m
     throw err;
   }
 };
+
+/**
+ * Generate a detailed solution blueprint for a single opportunity.
+ */
+export const getOpportunitySolution = async (evaluatedOpp, clientName) => {
+  if (!openai) throw new Error("OpenAI API Key is missing.");
+
+  const promptStr = `
+You are a Senior Technical Architect at Finivis.
+Provide a detailed Solution Blueprint for this specific AI opportunity:
+${JSON.stringify(evaluatedOpp, null, 2)}
+
+Client: ${clientName}
+
+Respond ONLY with a JSON object:
+{
+  "solutionTitle": "A technical name for the solution",
+  "executiveSummary": "1-2 sentence high-level overview of the proposed solution.",
+  "technicalArchitecture": "Detailed description of how the AI will be integrated into the existing system mentioned.",
+  "detailedChallenges": {
+     "data": "Specific data-related hurdles based on the provided challenges.",
+     "process": "Process-related hurdles and change management needs.",
+     "technical": "Specific integration or feasibility hurdles."
+  },
+  "implementationRoadmap": [
+    { "phase": "Discovery", "task": "Task description" },
+    { "phase": "Pilot", "task": "Task description" },
+    { "phase": "Scale", "task": "Task description" }
+  ],
+  "expectedROI": "Quantifiable ROI prediction (e.g. 30% reduction in X overhead)"
+}
+`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are a technical AI Architect. Output pure JSON." },
+        { role: "user", content: promptStr }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(completion.choices[0].message.content);
+  } catch (err) {
+    console.error("Failed to generate opportunity solution:", err);
+    throw err;
+  }
+};
+

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { evaluateOpportunity } from '../utils/EvaluationEngine';
-import { Download, FileText, FileSpreadsheet, Paperclip } from 'lucide-react';
+import OpportunityDetailView from './OpportunityDetailView';
+import { Download, FileText, FileSpreadsheet, Paperclip, ChevronRight } from 'lucide-react';
 import {
   Chart as ChartJS,
   LinearScale,
@@ -17,6 +18,7 @@ import * as xlsx from 'xlsx';
 ChartJS.register(LinearScale, PointElement, Tooltip, Legend, ChartDataLabels);
 
 export default function Dashboard({ opportunities, processName }) {
+  const [selectedOppForDetail, setSelectedOppForDetail] = useState(null);
   
   // Calculate specific scores
   const results = opportunities.map(opp => ({
@@ -167,7 +169,8 @@ export default function Dashboard({ opportunities, processName }) {
                 <th className="p-3 font-semibold">Data %</th>
                 <th className="p-3 font-semibold">Feasibility %</th>
                 <th className="p-3 font-semibold">Overall %</th>
-                <th className="p-3 font-semibold rounded-tr-lg">Priority</th>
+                <th className="p-3 font-semibold">Priority</th>
+                <th className="p-3 font-semibold rounded-tr-lg text-right">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -206,6 +209,14 @@ export default function Dashboard({ opportunities, processName }) {
                       }`}>
                         {r.priority}
                       </span>
+                    </td>
+                    <td className="p-3 text-right">
+                       <button 
+                         onClick={() => setSelectedOppForDetail(r)}
+                         className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-finivis-blue/5 text-finivis-blue hover:bg-finivis-blue hover:text-white rounded-lg transition-all text-xs font-bold"
+                       >
+                         View Blueprint <ChevronRight size={14} />
+                       </button>
                     </td>
                   </tr>
                   {/* Documents sub-row */}
@@ -280,6 +291,15 @@ export default function Dashboard({ opportunities, processName }) {
           </div>
         </div>
       </div>
+
+      {/* Detail Overlay */}
+      {selectedOppForDetail && (
+        <OpportunityDetailView 
+          evaluatedOpp={selectedOppForDetail} 
+          clientName={processName?.split(' - ')[0] || 'Client'} 
+          onClose={() => setSelectedOppForDetail(null)} 
+        />
+      )}
     </div>
   );
 }
