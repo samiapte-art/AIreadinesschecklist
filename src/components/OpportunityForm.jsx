@@ -204,9 +204,11 @@ export default function OpportunityForm({ opp, index, updateOpp, removeOpp, isEx
               onChange={(e) => updateOpp(index, 'maturity', e.target.value)}
             >
               <option value="" disabled>Select maturity</option>
-              <option>Not documented</option>
-              <option>Partially documented</option>
-              <option>Well documented and standardized</option>
+              <option>Adhoc (No process, inconsistent)</option>
+              <option>Defined (Documented but not enforced)</option>
+              <option>Standardized (Consistent across team)</option>
+              <option>Optimized (Measured and refined)</option>
+              <option>Automated (Significant tech already used)</option>
             </select>
           </div>
 
@@ -218,9 +220,11 @@ export default function OpportunityForm({ opp, index, updateOpp, removeOpp, isEx
               onChange={(e) => updateOpp(index, 'dataAvailability', e.target.value)}
             >
               <option value="" disabled>Select data state</option>
-              <option>High (clean, structured data available)</option>
-              <option>Medium (some data available but messy)</option>
-              <option>Low (little or no data)</option>
+              <option>No data (Manual tracking/nothing)</option>
+              <option>Manual data (Paper, distributed files)</option>
+              <option>Digital unstructured (PDFs, Emails, Images)</option>
+              <option>Structured systems (SQL, CRM, ERP)</option>
+              <option>Data warehouse ready (Clean, integrated data)</option>
             </select>
           </div>
 
@@ -235,7 +239,8 @@ export default function OpportunityForm({ opp, index, updateOpp, removeOpp, isEx
               <option>Daily</option>
               <option>Weekly</option>
               <option>Monthly</option>
-              <option>Occasionally</option>
+              <option>Quarterly</option>
+              <option>Rare (Annual or less)</option>
             </select>
           </div>
 

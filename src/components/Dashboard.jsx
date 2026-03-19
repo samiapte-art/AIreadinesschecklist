@@ -29,16 +29,16 @@ export default function Dashboard({ opportunities, processName }) {
       {
         label: 'Opportunities',
         data: results.map(r => ({
-          x: r.feasibilityScore,
-          y: r.valueScore,
-          name: r.name,
-          category: r.category
+          x: r.scores.feasibility,
+          y: r.scores.value,
+          name: r.opportunityName,
+          priority: r.priority
         })),
         backgroundColor: results.map(r => {
-          if (r.category === 'Quick Win') return '#10b981'; // Green
-          if (r.category === 'Strategic Initiative') return '#3b82f6'; // Blue
-          if (r.category === 'Efficiency Play') return '#f59e0b'; // Yellow
-          if (r.category === 'Long-Term Bet') return '#ef4444'; // Red
+          if (r.priority === 'HIGH') return '#10b981'; // Green
+          if (r.priority === 'MEDIUM') return '#3b82f6'; // Blue
+          if (r.priority === 'LOW') return '#f59e0b'; // Yellow
+          if (r.priority === 'NOT RECOMMENDED') return '#ef4444'; // Red
           return '#6b7280'; // Gray
         }),
         pointRadius: 8,
@@ -50,12 +50,12 @@ export default function Dashboard({ opportunities, processName }) {
   const chartOptions = {
     scales: {
       x: {
-        min: 0, max: 6,
-        title: { display: true, text: 'Feasibility Score (Ease of Implementation)' },
+        min: 0, max: 100,
+        title: { display: true, text: 'Implementation Ease (Feasibility %)' },
       },
       y: {
-        min: 0, max: 6,
-        title: { display: true, text: 'Business Value Score' }
+        min: 0, max: 100,
+        title: { display: true, text: 'Business Impact (Value %)' }
       }
     },
     plugins: {
@@ -76,7 +76,7 @@ export default function Dashboard({ opportunities, processName }) {
         callbacks: {
           label: (ctx) => {
             const dataPoint = ctx.raw;
-            return `${dataPoint.name} (${dataPoint.category})`;
+            return `${dataPoint.name} [Priority: ${dataPoint.priority}]`;
           }
         }
       }
@@ -96,17 +96,17 @@ export default function Dashboard({ opportunities, processName }) {
     // Summary Table
     const tableData = results.map((r, i) => [
       i + 1,
-      r.name || 'Unnamed',
-      r.valueScore,
-      r.dataScore,
-      r.feasibilityScore,
-      r.finalScore,
-      r.category
+      r.opportunityName,
+      r.scores.value,
+      r.scores.data,
+      r.scores.feasibility,
+      r.scores.overall,
+      r.priority
     ]);
 
     autoTable(doc, {
       startY: 40,
-      head: [['#', 'Name', 'Value', 'Data', 'Feasibility', 'Final Score', 'Category']],
+      head: [['#', 'Name', 'Value %', 'Data %', 'Feasibility %', 'Overall %', 'Priority']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [26, 86, 204] }, // Finivis Blue
@@ -117,7 +117,7 @@ export default function Dashboard({ opportunities, processName }) {
 
   const exportExcel = () => {
     const sheetData = results.map(r => ({
-      "Name": r.name,
+      "Name": r.opportunityName,
       "Description": r.description,
       "Pain Points": r.painPoints?.join(', '),
       "Maturity": r.maturity,
@@ -127,11 +127,14 @@ export default function Dashboard({ opportunities, processName }) {
       "Future State": r.futureState,
       "KPI": r.kpi,
       "Systems": r.systems,
-      "Value Score": r.valueScore,
-      "Data Score": r.dataScore,
-      "Feasibility Score": r.feasibilityScore,
-      "Final AI Score": r.finalScore,
-      "Priority Category": r.category
+      "Value %": r.scores.value,
+      "Data %": r.scores.data,
+      "Feasibility %": r.scores.feasibility,
+      "Risk Score": r.scores.risk,
+      "Overall Score %": r.scores.overall,
+      "Priority": r.priority,
+      "Implementation Effort": r.effort,
+      "Automation Type": r.automationType
     }));
     
     const ws = xlsx.utils.json_to_sheet(sheetData);
@@ -160,11 +163,11 @@ export default function Dashboard({ opportunities, processName }) {
             <thead className="bg-finivis-light/50 text-gray-600 border-b border-gray-200">
               <tr>
                 <th className="p-3 font-semibold rounded-tl-lg">Opportunity Name</th>
-                <th className="p-3 font-semibold">Value (1-5)</th>
-                <th className="p-3 font-semibold">Data (1-5)</th>
-                <th className="p-3 font-semibold">Feasibility (1-5)</th>
-                <th className="p-3 font-semibold">AI Score</th>
-                <th className="p-3 font-semibold rounded-tr-lg">Category</th>
+                <th className="p-3 font-semibold">Value %</th>
+                <th className="p-3 font-semibold">Data %</th>
+                <th className="p-3 font-semibold">Feasibility %</th>
+                <th className="p-3 font-semibold">Overall %</th>
+                <th className="p-3 font-semibold rounded-tr-lg">Priority</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -172,28 +175,36 @@ export default function Dashboard({ opportunities, processName }) {
                 <React.Fragment key={i}>
                   <tr className="hover:bg-gray-50 transition-colors">
                     <td className="p-3 font-medium text-finivis-dark">
-                      <div className="flex items-center gap-2">
-                        {r.name || 'Unnamed Opportunity'}
-                        {(r.documents || []).length > 0 && (
-                          <span className="flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                            <Paperclip size={10} />{(r.documents || []).length}
-                          </span>
-                        )}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          {r.opportunityName}
+                          {(r.documents || []).length > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                              <Paperclip size={10} />{(r.documents || []).length}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {r.tags?.map(tag => (
+                            <span key={tag} className="text-[10px] px-1.5 py-0.5 bg-gray-50 text-gray-500 border border-gray-100 rounded-md">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </td>
-                    <td className="p-3"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md">{r.valueScore}</span></td>
-                    <td className="p-3"><span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md">{r.dataScore}</span></td>
-                    <td className="p-3"><span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md">{r.feasibilityScore}</span></td>
-                    <td className="p-3 font-bold">{r.finalScore}</td>
+                    <td className="p-3"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium">{r.scores.value}</span></td>
+                    <td className="p-3"><span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md font-medium">{r.scores.data}</span></td>
+                    <td className="p-3"><span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md font-medium">{r.scores.feasibility}</span></td>
+                    <td className="p-3 font-bold text-lg text-finivis-dark">{r.scores.overall}</td>
                     <td className="p-3">
-                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${
-                        r.category === 'Quick Win' ? 'bg-green-100 text-green-800' :
-                        r.category === 'Strategic Initiative' ? 'bg-blue-100 text-blue-800' :
-                        r.category === 'Efficiency Play' ? 'bg-yellow-100 text-yellow-800' :
-                        r.category === 'Long-Term Bet' ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
+                      <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${
+                        r.priority === 'HIGH' ? 'bg-green-50 text-green-700 border-green-100' :
+                        r.priority === 'MEDIUM' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                        r.priority === 'LOW' ? 'bg-yellow-50 text-yellow-700 border-yellow-100' :
+                        'bg-red-50 text-red-700 border-red-100'
                       }`}>
-                        {r.category}
+                        {r.priority}
                       </span>
                     </td>
                   </tr>
@@ -241,29 +252,29 @@ export default function Dashboard({ opportunities, processName }) {
             <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
               <div className="w-1.5 h-12 rounded-full bg-emerald-500 shrink-0"></div>
               <div>
-                <h4 className="font-bold text-gray-900">Quick Wins</h4>
-                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">High value, high feasibility, good data. Prioritize these for immediate ROI.</p>
+                <h4 className="font-bold text-gray-900 text-sm">HIGH PRIORITY</h4>
+                <p className="text-[13px] text-gray-500 mt-1 leading-relaxed">High value impact. Look for 'Quick Win' tags for immediate ROI or 'Strategic Initiative' for long-term transformation.</p>
               </div>
             </div>
             <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
               <div className="w-1.5 h-12 rounded-full bg-finivis-blue shrink-0"></div>
               <div>
-                <h4 className="font-bold text-gray-900">Strategic Initiatives</h4>
-                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">High value but complex to implement. Require careful planning and phased delivery.</p>
+                <h4 className="font-bold text-gray-900 text-sm">MEDIUM PRIORITY</h4>
+                <p className="text-[13px] text-gray-500 mt-1 leading-relaxed">Solid efficiency plays. Good for building momentum and reducing standard manual overhead.</p>
               </div>
             </div>
             <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
               <div className="w-1.5 h-12 rounded-full bg-amber-500 shrink-0"></div>
               <div>
-                <h4 className="font-bold text-gray-900">Efficiency Plays</h4>
-                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">Medium value, relatively easy. Good for building momentum and reducing simple manual work.</p>
+                <h4 className="font-bold text-gray-900 text-sm">LOW PRIORITY</h4>
+                <p className="text-[13px] text-gray-500 mt-1 leading-relaxed">Lower ROI or higher complexity relative to value. Evaluate further or wait for process optimization.</p>
               </div>
             </div>
             <div className="p-5 rounded-2xl border border-gray-100 bg-white shadow-sm flex items-start gap-4">
               <div className="w-1.5 h-12 rounded-full bg-red-500 shrink-0"></div>
               <div>
-                <h4 className="font-bold text-gray-900">Long-Term Bets</h4>
-                <p className="text-[14px] text-gray-500 mt-1 leading-relaxed">Low data readiness or extremely complex. Need data architecture or process standardization first.</p>
+                <h4 className="font-bold text-gray-900 text-sm">NOT RECOMMENDED</h4>
+                <p className="text-[13px] text-gray-500 mt-1 leading-relaxed">Low data readiness, high risk, or negligible value. Focus on data architecture or process redesign first.</p>
               </div>
             </div>
           </div>

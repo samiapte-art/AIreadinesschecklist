@@ -1,0 +1,50 @@
+{
+  "DOCUMENT_AI": {
+    "name": "Intelligent Document Automation",
+    "phases": [
+      "Document ingestion (multi-channel scan/email)",
+      "OCR & Layout understanding",
+      "LLM extraction of key entities",
+      "Business rule validation",
+      "Human-in-the-loop exception handling",
+      "ERP / Downstream system push"
+    ],
+    "components": ["Document AI", "LLM", "Workflow Engine", "System Connector"]
+  },
+  "WORKFLOW_AUTOMATION": {
+    "name": "Process Orchestration & Workflow",
+    "phases": [
+      "Process mapping & logic definition",
+      "Digital form / Trigger setup",
+      "Approval engine & routing logic",
+      "SLA & Escalation tracking",
+      "Notifications & Alerting",
+      "Business Intelligence Dashboard"
+    ],
+    "components": ["Workflow Engine", "Low-code Platform", "Database", "Notification Service"]
+  },
+  "DATA_PREDICTION": {
+    "name": "Predictive Analytics & Forecasting",
+    "phases": [
+      "Data ingestion & pipeline build",
+      "Data cleansing & feature engineering",
+      "Predictive model training (ML/LLM)",
+      "Validation & A/B testing",
+      "API / Integration into existing tools",
+      "Executive reporting layer"
+    ],
+    "components": ["Data Pipeline", "ML Model", "Vector DB", "Visualization Tool"]
+  },
+  "DEFAULT": {
+    "name": "Custom AI Implementation",
+    "phases": [
+      "Technical Discovery",
+      "Data Preparation",
+      "AI Model Build / Prompt Engineering",
+      "System Integration",
+      "UAT & Deployment",
+      "Governance & Support"
+    ],
+    "components": ["API", "AI Engine", "Auth Service", "Monitoring"]
+  }
+}

@@ -3,7 +3,8 @@ import { supabase } from '../utils/supabaseClient';
 import Dashboard from './Dashboard';
 import AIInsightsPanel from './AIInsightsPanel';
 import { analyzeOpportunities } from '../utils/aiAnalyzer';
-import { Loader2, Users, Sparkles, LogOut } from 'lucide-react';
+import { evaluateOpportunity } from '../utils/EvaluationEngine';
+import { Loader2, Users, Sparkles, LogOut, CheckCircle, AlertTriangle, Zap } from 'lucide-react';
 
 export default function ConsultantDashboard({ session }) {
   const [submissions, setSubmissions] = useState([]);
@@ -63,10 +64,12 @@ export default function ConsultantDashboard({ session }) {
     setAiError(null);
     
     try {
-      // Pass the raw opportunities. In a real app we might pass pre-calculated DVF scores here too.
+      // 1. Run full professional evaluation on all opportunities first
+      const evaluatedOpportunities = selectedSubmission.opportunities_json.map(opp => evaluateOpportunity(opp));
+      
+      // 2. Pass the rich evaluated data to AI for final strategic narrative
       const insights = await analyzeOpportunities(
-        selectedSubmission.opportunities_json, 
-        { note: "DVF scores calculated implicitly by framework" },
+        evaluatedOpportunities, 
         selectedSubmission.client_name
       );
       setAiInsights(insights);

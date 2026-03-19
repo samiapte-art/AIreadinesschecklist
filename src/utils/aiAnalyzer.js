@@ -10,81 +10,61 @@ if (apiKey && apiKey !== 'your_openai_api_key_here') {
   });
 }
 
-export const analyzeOpportunities = async (opportunities, scores, clientName) => {
+export const analyzeOpportunities = async (evaluatedOpportunities, clientName) => {
   if (!openai) {
     throw new Error("OpenAI API Key is missing or invalid. Please check your .env file.");
   }
 
   const promptStr = `
 You are a Senior AI Strategist at Finivis, a top-tier technology consulting firm.
-Your job is to analyze the following business processes evaluated under a Data x Value x Feasibility (DVF) framework for the client "${clientName}".
+Your job is to analyze the following business processes evaluated under our proprietary AI Readiness Framework for the client "${clientName}".
 
-Raw Opportunity Data:
-${JSON.stringify(opportunities, null, 2)}
+We have already performed a deep-dive mathematical assessment of these opportunities. Use the provided scores, challenges, and suggested scopes as the GROUND TRUTH for your narrative.
 
-Calculated Scores:
-${JSON.stringify(scores, null, 2)}
+Rich Assessment Data:
+${JSON.stringify(evaluatedOpportunities, null, 2)}
 
 Respond ONLY with a valid JSON object matching exactly this structure, with no markdown formatting around it:
 {
-  "executiveSummary": "A 2-4 sentence summary of the client's current automation opportunities and overall maturity.",
+  "executiveSummary": "A 2-4 sentence summary of the client's current AI automation portfolio and overall readiness level based on the weighted scores (Value, Data, Feasibility, Risk).",
   "topRecommendation": {
-    "opportunityName": "Name of the best process to tackle first",
-    "rationale": "Why this is the strategic priority (max 2 sentences)"
+    "opportunityName": "Name of the highest-scoring/strategic 'Quick Win' to tackle first",
+    "rationale": "Direct reference to the scores and why this is the strategic priority (max 2 sentences)"
   },
-  "riskProfile": "Identified systemic risks based on data availability and system complexity across the board.",
-  "suggestedTechStack": ["Technology 1", "Technology 2", "Technology 3"],
+  "riskProfile": "Synthesis of the 'risk' scores and identified challenges across all opportunities.",
+  "suggestedTechStack": ["Specific AI Technology", "Integration Layer", "Infrastructure"],
   "scopeOfWork": {
-    "title": "A professional title for the consulting engagement",
-    "duration": "Estimated timeframe (e.g. 6-8 Weeks)",
+    "title": "A professional title for the AI Engagement",
+    "duration": "Estimated timeframe based on the 'effort' fields provided",
     "estimatedHours": "Total estimated consulting hours",
     "phases": [
       { 
-        "name": "Phase 1: Discovery & Architecture (Weeks 1-2)", 
-        "description": "A detailed 2-3 sentence paragraph explaining exactly what the Finivis consulting team will do during this phase, who they will speak with, and what systems they will audit.",
-        "deliverables": [
-          "Detailed Current State Process Map", 
-          "Data Architecture & Security Gap Analysis",
-          "Technical Requirements Document (TRD)"
-        ] 
+        "name": "Phase 1: Discovery & Technical Prep", 
+        "description": "Narrative based on the 'challenges' identified in Rule Engine.",
+        "deliverables": ["TRD", "Data Roadmap"] 
       },
       { 
-        "name": "Phase 2: MVP Development (Weeks 3-5)", 
-        "description": "A detailed 2-3 sentence paragraph explaining the build process for the top recommended automation, including integration points and testing methodology.",
-        "deliverables": [
-          "Functional MVP Automation Script/Integration", 
-          "UAT Test Scripts & Results",
-          "Initial End-User Documentation"
-        ] 
+        "name": "Phase 2: Build & Integration", 
+        "description": "Narrative build out of the implementation 'scope' and 'automationType' provided in data.",
+        "deliverables": ["Functioning AI Solution", "UAT Results"] 
       },
       { 
-        "name": "Phase 3: Training & Handover (Week 6)", 
-        "description": "A detailed paragraph explaining how Finivis will ensure the client's team adopts the new technology, including active support and governance guardrails.",
-        "deliverables": [
-          "Standard Operating Procedure (SOP) Manual", 
-          "Governance & Maintenance Guide",
-          "2x Recorded Training Sessions"
-        ] 
+        "name": "Phase 3: Rollout & Governance", 
+        "description": "Narrative on how to ensure the 'confidence' percentage is realized.",
+        "deliverables": ["SOP Manual", "Governance Guide"] 
       }
     ],
-    "assumptions": [
-      "Assumption 1 (e.g., Client provides API access within 48 hours)",
-      "Assumption 2"
-    ],
-    "outOfScope": [
-      "Out of scope 1 (e.g., Third-party software licensing)",
-      "Out of scope 2"
-    ],
-    "acceptanceCriteria": "A strict sentence defining how deliverables receive final sign-off."
+    "assumptions": ["Client provides data access", "Key stakeholders available"],
+    "outOfScope": ["Third-party hardware"],
+    "acceptanceCriteria": "Define how the ROI timeline mentioned in SOW will be validated."
   },
   "draftEmail": {
-    "subject": "Strategic Analysis: Next Steps for AI Implementation",
-    "body": "A professional, consultative email body (use \n for line breaks) summarizing the analysis, praising their forward-thinking, and pitching the SOW for our next sync. Do NOT use placeholders like [Your Name], use 'The Finivis Team'."
+    "subject": "Strategic AI Analysis: Path to Implementation",
+    "body": "A professional, consultative email body (use \\n for line breaks) summarizing the high-scoring opportunities, praising their potential, and pitching the next sync."
   },
   "internalNextSteps": [
-    "Pull case study for similar industry implementation",
-    "Schedule technical architect review of current CRM",
-    "Draft pricing proposal for Phase 1 MVP"
+    "Finalize technical architecture",
+    "Prepare SOW for Phase 1"
   ]
 }
 `;

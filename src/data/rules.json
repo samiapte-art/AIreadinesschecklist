@@ -1,0 +1,52 @@
+{
+  "dataRules": [
+    {
+      "id": "DATA_001",
+      "condition": "systems_count > 3",
+      "output": "Data is scattered across multiple systems, increasing integration complexity.",
+      "type": "data_challenge"
+    },
+    {
+      "id": "DATA_002",
+      "condition": "data_availability < 5",
+      "output": "Lack of structured digital data will require significant manual preparation.",
+      "type": "data_challenge"
+    },
+    {
+      "id": "DATA_003",
+      "condition": "no_documents",
+      "output": "Missing process documentation may hide edge cases and data anomalies.",
+      "type": "data_challenge"
+    }
+  ],
+  "processRules": [
+    {
+      "id": "PROC_001",
+      "condition": "maturity < 4",
+      "output": "Low process maturity suggests high variability; standardization is required before AI build.",
+      "type": "process_challenge"
+    },
+    {
+      "id": "PROC_002",
+      "condition": "frequency == 'Rare'",
+      "output": "Low frequency limits the ROI and data gathering opportunities.",
+      "type": "process_challenge"
+    }
+  ],
+  "valueRules": [
+    {
+      "id": "VAL_001",
+      "condition": "no_kpi",
+      "output": "Undefined KPIs make it difficult to measure automation success and ROI.",
+      "type": "value_challenge"
+    }
+  ],
+  "feasibilityRules": [
+    {
+      "id": "FEAS_001",
+      "condition": "systems_count > 4",
+      "output": "High number of system integrations significantly increases technical risk.",
+      "type": "feasibility_challenge"
+    }
+  ]
+}
