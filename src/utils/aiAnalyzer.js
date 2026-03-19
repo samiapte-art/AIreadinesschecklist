@@ -87,34 +87,41 @@ Respond ONLY with a valid JSON object matching exactly this structure, with no m
 };
 
 /**
- * Generate a detailed solution blueprint for a single opportunity.
+ * Generate a detailed pre-automation readiness schedule for the client.
  */
-export const getOpportunitySolution = async (evaluatedOpp, clientName) => {
+export const getOpportunityPreReqs = async (evaluatedOpp, clientName) => {
   if (!openai) throw new Error("OpenAI API Key is missing.");
 
   const promptStr = `
-You are a Senior Technical Architect at Finivis.
-Provide a detailed Solution Blueprint for this specific AI opportunity:
+You are a Senior AI Implementation Consultant at Finivis.
+Provide a detailed "Pre-Automation Readiness Schedule" for this specific AI opportunity:
 ${JSON.stringify(evaluatedOpp, null, 2)}
 
 Client: ${clientName}
 
+The goal is to list exactly what the CLIENT must do and prepare BEFORE Finivis starts the automation build.
+
 Respond ONLY with a JSON object:
 {
-  "solutionTitle": "A technical name for the solution",
-  "executiveSummary": "1-2 sentence high-level overview of the proposed solution.",
-  "technicalArchitecture": "Detailed description of how the AI will be integrated into the existing system mentioned.",
-  "detailedChallenges": {
-     "data": "Specific data-related hurdles based on the provided challenges.",
-     "process": "Process-related hurdles and change management needs.",
-     "technical": "Specific integration or feasibility hurdles."
-  },
-  "implementationRoadmap": [
-    { "phase": "Discovery", "task": "Task description" },
-    { "phase": "Pilot", "task": "Task description" },
-    { "phase": "Scale", "task": "Task description" }
+  "scheduleTitle": "e.g. Data & Process Readiness Roadmap",
+  "clientExecutiveSummary": "1-2 sentence overview of why these steps are critical for success.",
+  "preAutomationTasks": [
+    { 
+      "task": "e.g. Centralize Invoice PDFs", 
+      "owner": "e.g. Finance IT Team", 
+      "importance": "Critical",
+      "description": "Why this is needed and what the ideal state looks like." 
+    },
+    { "task": "...", "owner": "...", "importance": "...", "description": "..." }
   ],
-  "expectedROI": "Quantifiable ROI prediction (e.g. 30% reduction in X overhead)"
+  "dataRequirements": [
+     "Specific dataset 1 (e.g. 500+ historical invoices)",
+     "Specific access 2 (e.g. Read-only API access to ERP)"
+  ],
+  "stakeholderChecklist": [
+     "Identify Business Process Owner",
+     "Assign technical point of contact"
+  ]
 }
 `;
 
@@ -122,7 +129,7 @@ Respond ONLY with a JSON object:
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: "You are a technical AI Architect. Output pure JSON." },
+        { role: "system", content: "You are an AI Implementation Expert. Output pure JSON." },
         { role: "user", content: promptStr }
       ],
       response_format: { type: "json_object" }
@@ -130,7 +137,7 @@ Respond ONLY with a JSON object:
 
     return JSON.parse(completion.choices[0].message.content);
   } catch (err) {
-    console.error("Failed to generate opportunity solution:", err);
+    console.error("Failed to generate readiness schedule:", err);
     throw err;
   }
 };

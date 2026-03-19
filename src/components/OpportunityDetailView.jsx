@@ -2,32 +2,34 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, ArrowLeft, Zap, Shield, Database, BarChart3, 
   MessageSquare, Layout, Server, ClipboardList, 
-  TrendingUp, Loader2, Info, AlertTriangle, CheckCircle 
+  TrendingUp, Loader2, Info, AlertTriangle, CheckCircle,
+  Calendar, Users, FileCheck, ListChecks
 } from 'lucide-react';
-import { getOpportunitySolution } from '../utils/aiAnalyzer';
+import { getOpportunityPreReqs } from '../utils/aiAnalyzer';
 
 /**
  * OpportunityDetailView - A high-fidelity, deep-dive screen for a single AI opportunity.
+ * Updated to focus on Challenge Matrix first and Client Pre-requisites.
  */
 export default function OpportunityDetailView({ evaluatedOpp, clientName, onClose }) {
-  const [solution, setSolution] = useState(null);
+  const [schedule, setSchedule] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    async function fetchSolution() {
+    async function fetchSchedule() {
       try {
         setLoading(true);
-        const data = await getOpportunitySolution(evaluatedOpp, clientName);
-        setSolution(data);
+        const data = await getOpportunityPreReqs(evaluatedOpp, clientName);
+        setSchedule(data);
       } catch (err) {
-        console.error("Failed to load solution blueprint:", err);
-        setError("Could not generate the solution blueprint at this time.");
+        console.error("Failed to load readiness schedule:", err);
+        setError("Could not generate the readiness schedule at this time.");
       } finally {
         setLoading(false);
       }
     }
-    fetchSolution();
+    fetchSchedule();
   }, [evaluatedOpp, clientName]);
 
   const { scores, priority, challenges, effort, confidence, tags } = evaluatedOpp;
@@ -73,11 +75,41 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
           </p>
         </div>
 
+        {/* 1. CHALLENGE MATRIX AT THE TOP */}
+        <div className="mb-8">
+           <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <AlertTriangle size={20} className="text-amber-500" /> Critical Challenge Matrix
+              </h3>
+              
+              <div className="grid md:grid-cols-3 gap-6">
+                 <ChallengeCard 
+                   title="Data Pipeline" 
+                   icon={<Database size={16} />} 
+                   items={challenges.data} 
+                   detail={schedule?.dataRequirements?.[0]}
+                 />
+                 <ChallengeCard 
+                   title="Process Maturity" 
+                   icon={<ClipboardList size={16} />} 
+                   items={challenges.process}
+                   detail={schedule?.stakeholderChecklist?.[0]}
+                 />
+                 <ChallengeCard 
+                   title="Tech Integration" 
+                   icon={<Server size={16} />} 
+                   items={challenges.feasibility}
+                   detail={schedule?.stakeholderChecklist?.[1]}
+                 />
+              </div>
+           </div>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-8">
           
           {/* Left Column: Metrics & Scores */}
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100">
               <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <BarChart3 size={18} className="text-finivis-blue" /> Framework Scores
               </h3>
@@ -100,7 +132,7 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
               </div>
             </div>
 
-            <div className="bg-finivis-dark text-white p-8 rounded-[2rem] border border-gray-800 shadow-xl">
+            <div className="bg-finivis-dark text-white p-8 rounded-[2.5rem] border border-gray-800 shadow-xl">
               <div className="flex items-center gap-3 mb-6">
                 <Zap size={24} className="text-yellow-400 fill-yellow-400" />
                 <h3 className="text-lg font-bold">Quick Insights</h3>
@@ -124,22 +156,24 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
             </div>
           </div>
 
-          {/* Right Column: Solution & Challenges */}
+          {/* Right Column: Pre-automation Schedule */}
           <div className="lg:col-span-2 space-y-8">
             
-            {/* AI Generated Solution */}
-            <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100 min-h-[400px]">
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100 min-h-[400px]">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Sparkles size={20} className="text-finivis-red" /> AI Solution Blueprint
-                </h3>
+                 <div>
+                    <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <ListChecks size={20} className="text-finivis-blue" /> Client Pre-Automation Roadmap
+                    </h3>
+                    <p className="text-xs text-gray-400 font-medium mt-1">Steps required BEFORE Project Commencement</p>
+                 </div>
                 {loading && <Loader2 size={20} className="animate-spin text-finivis-blue" />}
               </div>
 
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                    <Loader2 size={40} className="animate-spin mb-4" />
-                   <p className="font-medium">Architecting possible solution...</p>
+                   <p className="font-medium">Curating readiness checklist...</p>
                 </div>
               ) : error ? (
                 <div className="text-center py-20">
@@ -147,74 +181,71 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
                    <p className="text-gray-600">{error}</p>
                 </div>
               ) : (
-                <div className="space-y-8 animate-fade-in translate-y-0">
-                   <div>
-                      <h4 className="text-xs font-black text-finivis-blue uppercase tracking-widest mb-2">PROPOSED APPROACH</h4>
-                      <h5 className="text-2xl font-bold text-gray-900 mb-2">{solution.solutionTitle}</h5>
-                      <p className="text-gray-600 leading-relaxed">{solution.executiveSummary}</p>
-                   </div>
-
-                   <div className="grid md:grid-cols-2 gap-6">
-                      <div className="p-5 rounded-2xl bg-blue-50/50 border border-blue-100">
-                         <h5 className="font-bold text-finivis-blue mb-1 flex items-center gap-2">
-                            <Layout size={16} /> Technical Architecture
-                         </h5>
-                         <p className="text-xs text-blue-900 leading-relaxed">{solution.technicalArchitecture}</p>
-                      </div>
-                      <div className="p-5 rounded-2xl bg-green-50/50 border border-green-100">
-                         <h5 className="font-bold text-green-700 mb-1 flex items-center gap-2">
-                            <TrendingUp size={16} /> Expected Outcomes
-                         </h5>
-                         <p className="text-xs text-green-900 leading-relaxed">{solution.expectedROI}</p>
-                      </div>
+                <div className="space-y-8 animate-fade-in">
+                   <div className="p-6 rounded-2xl bg-finivis-blue/5 border border-finivis-blue/10">
+                      <h4 className="text-[10px] font-black text-finivis-blue uppercase tracking-widest mb-1 text-center">EXECUTIVE READINESS SUMMARY</h4>
+                      <p className="text-gray-800 font-medium text-center leading-relaxed">"{schedule.clientExecutiveSummary}"</p>
                    </div>
 
                    <div>
-                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">IMPLEMENTATION ROADMAP</h4>
-                      <div className="space-y-3">
-                         {solution.implementationRoadmap.map((step, idx) => (
-                           <div key={idx} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100 hover:border-finivis-blue transition-colors">
-                              <div className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-xs font-bold text-gray-400 shrink-0">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                        <Calendar size={14} /> STEP-BY-STEP READINESS SCHEDULE
+                      </h4>
+                      <div className="space-y-4">
+                         {schedule.preAutomationTasks.map((item, idx) => (
+                           <div key={idx} className="flex gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-finivis-blue group transition-all">
+                              <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-sm font-black text-finivis-blue shrink-0 shadow-sm group-hover:scale-110 transition-transform">
                                  {idx + 1}
                               </div>
-                              <div>
-                                 <span className="text-[10px] font-black text-finivis-blue uppercase tracking-tighter">{step.phase}</span>
-                                 <p className="text-sm font-bold text-gray-800">{step.task}</p>
+                              <div className="flex-1">
+                                 <div className="flex justify-between items-start mb-1">
+                                    <h5 className="font-bold text-gray-900">{item.task}</h5>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${
+                                       item.importance === 'Critical' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                    }`}>
+                                       {item.importance}
+                                    </span>
+                                 </div>
+                                 <p className="text-xs text-gray-500 mb-2 leading-relaxed">{item.description}</p>
+                                 <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                                    <Users size={10} /> Owner: {item.owner}
+                                 </div>
                               </div>
                            </div>
                          ))}
                       </div>
                    </div>
+
+                   <div className="grid md:grid-cols-2 gap-6">
+                      <div className="space-y-4">
+                         <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                           <Database size={14} /> DATA REQUIREMENTS
+                         </h4>
+                         <ul className="space-y-2">
+                            {schedule.dataRequirements.map((req, i) => (
+                              <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
+                                 <div className="w-1.5 h-1.5 rounded-full bg-finivis-blue"></div>
+                                 {req}
+                              </li>
+                            ))}
+                         </ul>
+                      </div>
+                      <div className="space-y-4">
+                         <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                           <FileCheck size={14} /> STAKEHOLDER CHECKLIST
+                         </h4>
+                         <ul className="space-y-2">
+                            {schedule.stakeholderChecklist.map((item, i) => (
+                              <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium whitespace-nowrap">
+                                 <CheckCircle size={14} className="text-green-500" />
+                                 {item}
+                              </li>
+                            ))}
+                         </ul>
+                      </div>
+                   </div>
                 </div>
               )}
-            </div>
-
-            {/* Challenges Breakdown */}
-            <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
-               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                 <AlertTriangle size={20} className="text-amber-500" /> Challenge Matrix
-               </h3>
-               
-               <div className="grid md:grid-cols-3 gap-4">
-                  <ChallengeCard 
-                    title="Data Challenges" 
-                    icon={<Database size={16} />} 
-                    items={challenges.data} 
-                    detail={solution?.detailedChallenges?.data}
-                  />
-                  <ChallengeCard 
-                    title="Process Challenges" 
-                    icon={<ClipboardList size={16} />} 
-                    items={challenges.process}
-                    detail={solution?.detailedChallenges?.process}
-                  />
-                  <ChallengeCard 
-                    title="Tech Feasibility" 
-                    icon={<Server size={16} />} 
-                    items={challenges.feasibility}
-                    detail={solution?.detailedChallenges?.technical}
-                  />
-               </div>
             </div>
 
           </div>
