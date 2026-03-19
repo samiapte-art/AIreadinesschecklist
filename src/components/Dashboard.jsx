@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { evaluateOpportunity } from '../utils/EvaluationEngine';
 import OpportunityDetailView from './OpportunityDetailView';
 import { Download, FileText, FileSpreadsheet, Paperclip, ChevronRight } from 'lucide-react';
@@ -21,12 +21,11 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
   const [selectedOppForDetail, setSelectedOppForDetail] = useState(null);
   const [selectedOppIndex, setSelectedOppIndex] = useState(null);
   
-  // Calculate specific scores
-  const results = opportunities.map((opp, idx) => ({
+  const results = useMemo(() => opportunities.map((opp, idx) => ({
     ...opp,
     ...evaluateOpportunity(opp),
     originalIndex: idx
-  }));
+  })), [opportunities]);
 
   const chartData = {
     datasets: [

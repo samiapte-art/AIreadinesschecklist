@@ -78,17 +78,21 @@ export default function ConsultantDashboard({ session }) {
       );
       
       // 3. Persist to Supabase
+      console.log("Persisting global AI insights for submission:", selectedSubmission.id);
       const { error: saveError } = await supabase
         .from('client_submissions')
         .update({ ai_insights: insights })
         .eq('id', selectedSubmission.id);
         
-      if (saveError) throw new Error("Failed to persist AI insights to database.");
+      if (saveError) {
+        console.error("Supabase Save Error (Global Insights):", saveError);
+        throw new Error(`Persistence Error: ${saveError.message}. Ensure RLS allows updates.`);
+      }
       
-      // Update local state to reflect the new data in the list if needed, 
-      // but setAiInsights is enough for current view
+      console.log("Successfully persisted AI insights.");
       setAiInsights(insights);
     } catch (err) {
+      console.error("handleGenerateAI Failed:", err);
       setAiError(err.message || 'Failed to generate AI insights.');
     } finally {
       setAiLoading(false);
@@ -98,6 +102,7 @@ export default function ConsultantDashboard({ session }) {
   const handleUpdateOpportunity = async (updatedOppIndex, roadmapData) => {
     if (!selectedSubmission) return;
     
+    console.log(`Persisting roadmap for opportunity at index ${updatedOppIndex}`);
     const updatedOpps = [...selectedSubmission.opportunities_json];
     updatedOpps[updatedOppIndex] = { 
       ...updatedOpps[updatedOppIndex], 
@@ -110,8 +115,10 @@ export default function ConsultantDashboard({ session }) {
       .eq('id', selectedSubmission.id);
 
     if (error) {
-      console.error("Failed to persist opportunity roadmap:", error);
+      console.error("Supabase Save Error (Opportunity Roadmap):", error);
+      alert(`Error saving roadmap: ${error.message}. Please check if you have permission to update this record.`);
     } else {
+      console.log("Successfully persisted roadmap.");
       // Update local state to prevent re-fetch
       setSelectedSubmission({
         ...selectedSubmission,
