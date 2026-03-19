@@ -18,7 +18,6 @@ import * as xlsx from 'xlsx';
 ChartJS.register(LinearScale, PointElement, Tooltip, Legend, ChartDataLabels);
 
 export default function Dashboard({ opportunities, processName, onUpdateOpportunity }) {
-  const [selectedOppForDetail, setSelectedOppForDetail] = useState(null);
   const [selectedOppIndex, setSelectedOppIndex] = useState(null);
   
   const results = useMemo(() => opportunities.map((opp, idx) => ({
@@ -26,6 +25,11 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
     ...evaluateOpportunity(opp),
     originalIndex: idx
   })), [opportunities]);
+
+  // Derive the active opportunity from results to ensure it stays in sync with parent updates
+  const activeOpp = useMemo(() => 
+    selectedOppIndex !== null ? results[selectedOppIndex] : null, 
+  [results, selectedOppIndex]);
 
   const chartData = {
     datasets: [
@@ -213,10 +217,7 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
                     </td>
                     <td className="p-3 text-right">
                        <button 
-                         onClick={() => {
-                           setSelectedOppForDetail(r);
-                           setSelectedOppIndex(r.originalIndex);
-                         }}
+                         onClick={() => setSelectedOppIndex(r.originalIndex)}
                          className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-finivis-blue/5 text-finivis-blue hover:bg-finivis-blue hover:text-white rounded-lg transition-all text-xs font-bold"
                        >
                          View Blueprint <ChevronRight size={14} />
@@ -297,14 +298,11 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
       </div>
 
       {/* Detail Overlay */}
-      {selectedOppForDetail && (
+      {activeOpp && (
         <OpportunityDetailView 
-          evaluatedOpp={selectedOppForDetail} 
+          evaluatedOpp={activeOpp} 
           clientName={processName?.split(' - ')[0] || 'Client'} 
-          onClose={() => {
-            setSelectedOppForDetail(null);
-            setSelectedOppIndex(null);
-          }}
+          onClose={() => setSelectedOppIndex(null)}
           onSaveRoadmap={(data) => onUpdateOpportunity(selectedOppIndex, data)}
         />
       )}

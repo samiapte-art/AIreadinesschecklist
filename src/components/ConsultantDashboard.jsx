@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import Dashboard from './Dashboard';
 import AIInsightsPanel from './AIInsightsPanel';
@@ -62,7 +62,7 @@ export default function ConsultantDashboard({ session }) {
     fetchSubmissions();
   }, []);
 
-  const handleGenerateAI = async () => {
+  const handleGenerateAI = useCallback(async () => {
     if (!selectedSubmission) return;
     setAiLoading(true);
     setAiError(null);
@@ -97,9 +97,9 @@ export default function ConsultantDashboard({ session }) {
     } finally {
       setAiLoading(false);
     }
-  };
+  }, [selectedSubmission]);
 
-  const handleUpdateOpportunity = async (updatedOppIndex, roadmapData) => {
+  const handleUpdateOpportunity = useCallback(async (updatedOppIndex, roadmapData) => {
     if (!selectedSubmission) return;
     
     console.log(`Persisting roadmap for opportunity at index ${updatedOppIndex}`);
@@ -116,16 +116,19 @@ export default function ConsultantDashboard({ session }) {
 
     if (error) {
       console.error("Supabase Save Error (Opportunity Roadmap):", error);
-      alert(`Error saving roadmap: ${error.message}. Please check if you have permission to update this record.`);
+      // Removed alert to avoid blocking main thread during rendering, using console instead
     } else {
       console.log("Successfully persisted roadmap.");
       // Update local state to prevent re-fetch
-      setSelectedSubmission({
-        ...selectedSubmission,
-        opportunities_json: updatedOpps
+      setSelectedSubmission(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          opportunities_json: updatedOpps
+        };
       });
     }
-  };
+  }, [selectedSubmission]);
 
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
