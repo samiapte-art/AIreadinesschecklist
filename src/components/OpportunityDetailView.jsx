@@ -116,6 +116,111 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
            </div>
         </div>
 
+        {/* 2. STRATEGIC OUTCOME REPORT */}
+        <div className="mb-8">
+           <div className="bg-finivis-dark text-white p-8 rounded-[2.5rem] shadow-2xl border border-gray-800 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-12 opacity-10">
+                 <Sparkles size={120} />
+              </div>
+              
+              <div className="relative z-10">
+                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pb-6 border-b border-gray-700/50">
+                    <div>
+                       <h3 className="text-2xl font-black tracking-tight mb-2 flex items-center gap-3">
+                         <div className="w-8 h-8 bg-finivis-red rounded-lg flex items-center justify-center">
+                            <Zap size={18} className="text-white" />
+                         </div>
+                         Strategic Outcome Report
+                       </h3>
+                       <p className="text-gray-400 text-sm font-medium">High-level executive summary and implementation roadmap</p>
+                    </div>
+                    <div className="flex gap-4">
+                       <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
+                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">ROI Timeline</p>
+                          <p className="font-bold text-finivis-red">6–9 months</p>
+                       </div>
+                       <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
+                          <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Complexity</p>
+                          <p className="font-bold text-blue-400">Medium</p>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="grid lg:grid-cols-2 gap-12">
+                    {/* Recommended Scope */}
+                    <div>
+                       <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
+                         <TrendingUp size={14} className="text-finivis-red" /> Recommended Implementation Scope
+                       </h4>
+                       <div className="space-y-4">
+                          {[
+                            { phase: 'Phase 1', title: 'Process standardization', desc: 'Aligning business logic and manual approval chains.' },
+                            { phase: 'Phase 2', title: 'Data preparation', desc: 'Centralizing scattered datasets and historical records.' },
+                            { phase: 'Phase 3', title: 'AI automation', desc: 'Deploying LLM-driven decision support and extraction.' },
+                            { phase: 'Phase 4', title: 'Workflow deployment', desc: 'Full integration with existing ERP/Software stack.' }
+                          ].map((step, i) => (
+                             <div key={i} className="flex gap-4 group">
+                                <div className="flex flex-col items-center">
+                                   <div className="w-6 h-6 rounded-full bg-finivis-red flex items-center justify-center text-[10px] font-black shrink-0 z-10">
+                                      {i + 1}
+                                   </div>
+                                   {i < 3 && <div className="w-0.5 h-full bg-gray-800 -mt-1 mb-1"></div>}
+                                </div>
+                                <div className="pb-4">
+                                   <p className="text-[10px] font-black text-finivis-red uppercase mb-0.5">{step.phase}</p>
+                                   <h5 className="font-bold text-white text-sm mb-1">{step.title}</h5>
+                                   <p className="text-xs text-gray-400 leading-relaxed">{step.desc}</p>
+                                </div>
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+
+                    {/* Challenge Summary & Automation Type */}
+                    <div className="space-y-8">
+                       <div>
+                          <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Key Challenge Deep-Dive</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                <p className="text-[10px] font-black text-purple-400 uppercase mb-2">DATA</p>
+                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
+                                   <li>• Data scattered</li>
+                                   <li>• Missing history</li>
+                                </ul>
+                             </div>
+                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                <p className="text-[10px] font-black text-blue-400 uppercase mb-2">PROCESS</p>
+                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
+                                   <li>• Manual approvals</li>
+                                   <li>• No SOP</li>
+                                </ul>
+                             </div>
+                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                <p className="text-[10px] font-black text-orange-400 uppercase mb-2">VALUE</p>
+                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
+                                   <li>• Integration effort</li>
+                                </ul>
+                             </div>
+                             <div className="p-4 bg-white/5 border border-white/10 rounded-2xl">
+                                <p className="text-[10px] font-black text-red-400 uppercase mb-2">FEASIBILITY</p>
+                                <ul className="text-xs text-gray-300 space-y-1 font-medium">
+                                   <li>• Exception complexity</li>
+                                </ul>
+                             </div>
+                          </div>
+                       </div>
+
+                       <div className="p-6 bg-gradient-to-br from-finivis-red/20 to-transparent border border-finivis-red/30 rounded-3xl">
+                          <h4 className="text-xs font-black text-finivis-red uppercase tracking-widest mb-2">Automation Type</h4>
+                          <p className="text-xl font-black text-white">AI + Workflow automation</p>
+                          <p className="text-xs text-gray-400 mt-2 font-medium">Standardizing decision-making with LLM enrichment and automated task routing.</p>
+                       </div>
+                    </div>
+                 </div>
+              </div>
+           </div>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-8">
           
           {/* Left Column: Metrics & Scores */}
