@@ -17,13 +17,15 @@ import * as xlsx from 'xlsx';
 
 ChartJS.register(LinearScale, PointElement, Tooltip, Legend, ChartDataLabels);
 
-export default function Dashboard({ opportunities, processName }) {
+export default function Dashboard({ opportunities, processName, onUpdateOpportunity }) {
   const [selectedOppForDetail, setSelectedOppForDetail] = useState(null);
+  const [selectedOppIndex, setSelectedOppIndex] = useState(null);
   
   // Calculate specific scores
-  const results = opportunities.map(opp => ({
+  const results = opportunities.map((opp, idx) => ({
     ...opp,
-    ...evaluateOpportunity(opp)
+    ...evaluateOpportunity(opp),
+    originalIndex: idx
   }));
 
   const chartData = {
@@ -212,7 +214,10 @@ export default function Dashboard({ opportunities, processName }) {
                     </td>
                     <td className="p-3 text-right">
                        <button 
-                         onClick={() => setSelectedOppForDetail(r)}
+                         onClick={() => {
+                           setSelectedOppForDetail(r);
+                           setSelectedOppIndex(r.originalIndex);
+                         }}
                          className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-finivis-blue/5 text-finivis-blue hover:bg-finivis-blue hover:text-white rounded-lg transition-all text-xs font-bold"
                        >
                          View Blueprint <ChevronRight size={14} />
@@ -297,7 +302,11 @@ export default function Dashboard({ opportunities, processName }) {
         <OpportunityDetailView 
           evaluatedOpp={selectedOppForDetail} 
           clientName={processName?.split(' - ')[0] || 'Client'} 
-          onClose={() => setSelectedOppForDetail(null)} 
+          onClose={() => {
+            setSelectedOppForDetail(null);
+            setSelectedOppIndex(null);
+          }}
+          onSaveRoadmap={(data) => onUpdateOpportunity(selectedOppIndex, data)}
         />
       )}
     </div>

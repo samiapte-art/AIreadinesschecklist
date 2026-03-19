@@ -16,9 +16,13 @@ export default function ConsultantDashboard({ session }) {
   const [aiInsights, setAiInsights] = useState(null);
   const [aiError, setAiError] = useState(null);
 
-  // Clear AI states when selecting a new client
+  // Clear or load AI states when selecting a new client
   useEffect(() => {
-    setAiInsights(null);
+    if (selectedSubmission?.ai_insights) {
+      setAiInsights(selectedSubmission.ai_insights);
+    } else {
+      setAiInsights(null);
+    }
     setAiError(null);
   }, [selectedSubmission]);
 
@@ -72,11 +76,47 @@ export default function ConsultantDashboard({ session }) {
         evaluatedOpportunities, 
         selectedSubmission.client_name
       );
+      
+      // 3. Persist to Supabase
+      const { error: saveError } = await supabase
+        .from('client_submissions')
+        .update({ ai_insights: insights })
+        .eq('id', selectedSubmission.id);
+        
+      if (saveError) throw new Error("Failed to persist AI insights to database.");
+      
+      // Update local state to reflect the new data in the list if needed, 
+      // but setAiInsights is enough for current view
       setAiInsights(insights);
     } catch (err) {
       setAiError(err.message || 'Failed to generate AI insights.');
     } finally {
       setAiLoading(false);
+    }
+  };
+
+  const handleUpdateOpportunity = async (updatedOppIndex, roadmapData) => {
+    if (!selectedSubmission) return;
+    
+    const updatedOpps = [...selectedSubmission.opportunities_json];
+    updatedOpps[updatedOppIndex] = { 
+      ...updatedOpps[updatedOppIndex], 
+      persisted_roadmap: roadmapData 
+    };
+
+    const { error } = await supabase
+      .from('client_submissions')
+      .update({ opportunities_json: updatedOpps })
+      .eq('id', selectedSubmission.id);
+
+    if (error) {
+      console.error("Failed to persist opportunity roadmap:", error);
+    } else {
+      // Update local state to prevent re-fetch
+      setSelectedSubmission({
+        ...selectedSubmission,
+        opportunities_json: updatedOpps
+      });
     }
   };
 
@@ -164,12 +204,13 @@ export default function ConsultantDashboard({ session }) {
                
                {aiInsights && <AIInsightsPanel insights={aiInsights} />}
 
-               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mt-8">
-                 <Dashboard 
-                    opportunities={selectedSubmission.opportunities_json} 
-                    processName={`${selectedSubmission.client_name} - ${selectedSubmission.client_website}`}
-                 />
-               </div>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mt-8">
+                  <Dashboard 
+                     opportunities={selectedSubmission.opportunities_json} 
+                     processName={`${selectedSubmission.client_name} - ${selectedSubmission.client_website}`}
+                     onUpdateOpportunity={handleUpdateOpportunity}
+                  />
+                </div>
             </div>
           ) : (
             <div className="min-h-[60vh] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-[2rem] bg-white/50 p-20">

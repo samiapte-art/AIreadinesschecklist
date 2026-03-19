@@ -11,17 +11,28 @@ import { getOpportunityPreReqs } from '../utils/aiAnalyzer';
  * OpportunityDetailView - A high-fidelity, deep-dive screen for a single AI opportunity.
  * Updated to focus on Challenge Matrix first and Client Pre-requisites.
  */
-export default function OpportunityDetailView({ evaluatedOpp, clientName, onClose }) {
-  const [schedule, setSchedule] = useState(null);
-  const [loading, setLoading] = useState(true);
+export default function OpportunityDetailView({ evaluatedOpp, clientName, onClose, onSaveRoadmap }) {
+  const [schedule, setSchedule] = useState(evaluatedOpp.persisted_roadmap || null);
+  const [loading, setLoading] = useState(!evaluatedOpp.persisted_roadmap);
   const [error, setError] = useState(null);
 
   useEffect(() => {
+    // If we already have a persisted roadmap, don't re-fetch
+    if (evaluatedOpp.persisted_roadmap) {
+      setSchedule(evaluatedOpp.persisted_roadmap);
+      setLoading(false);
+      return;
+    }
+
     async function fetchSchedule() {
       try {
         setLoading(true);
         const data = await getOpportunityPreReqs(evaluatedOpp, clientName);
         setSchedule(data);
+        // Persist the freshly generated roadmap
+        if (onSaveRoadmap) {
+          onSaveRoadmap(data);
+        }
       } catch (err) {
         console.error("Failed to load readiness schedule:", err);
         setError("Could not generate the readiness schedule at this time.");
@@ -30,7 +41,7 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
       }
     }
     fetchSchedule();
-  }, [evaluatedOpp, clientName]);
+  }, [evaluatedOpp, clientName, onSaveRoadmap]);
 
   const { scores, priority, challenges, effort, confidence, tags } = evaluatedOpp;
 
