@@ -300,87 +300,242 @@ export default function Dashboard({
   const exportPPT = () => {
     const pptx = new pptxgen();
 
+    // Color palette
+    const NAVY = '1E293B';
+    const DARK_BG = '0F172A';
+    const SLATE = '64748B';
+    const LIGHT_SLATE = '94A3B8';
+    const ACCENT_BLUE = '3B82F6';
+    const WHITE = 'FFFFFF';
+    const OFF_WHITE = 'F8FAFC';
+    const BORDER = 'E2E8F0';
+    const ALT_ROW = 'F1F5F9';
+    const GREEN = '16A34A';
+    const AMBER = 'D97706';
+    const RED = 'DC2626';
+
+    // Helper: get priority color
+    const getPriorityColor = (priority) => {
+      const p = (priority || '').toUpperCase();
+      if (p === 'HIGH' || p === 'CRITICAL') return GREEN;
+      if (p === 'MEDIUM') return AMBER;
+      return RED;
+    };
+
+    // Helper: get score color
+    const getScoreColor = (score) => {
+      const s = parseInt(score);
+      if (s >= 70) return GREEN;
+      if (s >= 50) return AMBER;
+      return RED;
+    };
+
+    // Helper: format date professionally
+    const formatDate = () => {
+      const d = new Date();
+      return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    };
+
     // Set presentation properties
     pptx.layout = 'LAYOUT_WIDE';
     pptx.defineSlideMaster({
       title: 'MASTER_SLIDE',
-      background: { color: 'FFFFFF' },
+      background: { color: WHITE },
       objects: [
-        // Logo at Top-Right with fixed aspect ratio
         { image: { x: 11.5, y: 0.2, w: 1.2, h: 0.8, path: '/logo.png', sizing: { type: 'contain' } } },
-        // Footer: Center
-        { text: { text: "Private & Confidential", options: { x: 0, y: 7.1, w: '100%', align: 'center', fontSize: 10, color: '94A3B8', fontFace: 'Arial' } } },
+        { text: { text: "Private & Confidential", options: { x: 0, y: 7.1, w: '100%', align: 'center', fontSize: 10, color: LIGHT_SLATE, fontFace: 'Arial' } } },
+      ]
+    });
+    pptx.defineSlideMaster({
+      title: 'DARK_SLIDE',
+      background: { color: DARK_BG },
+      objects: [
+        { image: { x: 11.5, y: 0.2, w: 1.2, h: 0.8, path: '/logo.png', sizing: { type: 'contain' } } },
       ]
     });
 
-    // 1. Title Slide
-    const titleSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-    titleSlide.addText("AI OPPORTUNITY ASSESSMENT", {
-      x: 0, y: '35%', w: '100%', align: 'center',
-      fontSize: 48, fontFace: 'Arial', color: '1E293B', bold: true
+    let slideCounter = 1;
+    const addPageNum = (slide) => {
+      slide.addText(`${slideCounter}`, { x: 12.2, y: 7.1, w: 1.0, align: 'right', fontSize: 10, color: LIGHT_SLATE, fontFace: 'Arial' });
+      slideCounter++;
+    };
+
+    // ========================================
+    // SLIDE 1: TITLE (Dark Background)
+    // ========================================
+    const titleSlide = pptx.addSlide({ masterName: 'DARK_SLIDE' });
+    titleSlide.addShape(pptx.ShapeType.rect, {
+      x: 0.8, y: 3.1, w: 2.5, h: 0.05, fill: { color: ACCENT_BLUE }
     });
-    titleSlide.addText(clientName || "Executive Strategy Report", {
-      x: 0, y: '50%', w: '100%', align: 'center',
-      fontSize: 24, fontFace: 'Arial', color: '64748B'
+    titleSlide.addText("AI Opportunity\nAssessment", {
+      x: 0.8, y: 1.5, w: 8, fontSize: 48, fontFace: 'Arial', color: WHITE, bold: true, lineSpacingMultiple: 1.1
     });
-    titleSlide.addText(new Date().toLocaleDateString('en-GB'), {
-      x: 0, y: '62%', w: '100%', align: 'center',
-      fontSize: 14, fontFace: 'Arial', color: '94A3B8'
+    titleSlide.addText(`Prepared for ${clientName || 'Client'}`, {
+      x: 0.8, y: 3.4, w: 8, fontSize: 22, fontFace: 'Arial', color: ACCENT_BLUE
+    });
+    titleSlide.addText(formatDate(), {
+      x: 0.8, y: 4.2, w: 8, fontSize: 14, fontFace: 'Arial', color: LIGHT_SLATE
+    });
+    titleSlide.addText("Prepared by Finivis  |  Prepare for Tomorrow", {
+      x: 0.8, y: 6.5, w: 8, fontSize: 12, fontFace: 'Arial', color: SLATE, italic: true
+    });
+    titleSlide.addText("CONFIDENTIAL", {
+      x: 0.8, y: 7.0, w: 4, fontSize: 9, fontFace: 'Arial', color: LIGHT_SLATE
+    });
+    addPageNum(titleSlide);
+
+    // ========================================
+    // SLIDE 2: EXECUTIVE SUMMARY
+    // ========================================
+    const execSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+    execSlide.addText("EXECUTIVE SUMMARY", {
+      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
+    });
+    addPageNum(execSlide);
+
+    const totalOpps = results.length;
+    const approvedOpps = results.filter(r => r.decision?.verdict === 'Approved');
+    const highPriority = results.filter(r => (r.priority || '').toUpperCase() === 'HIGH' || (r.priority || '').toUpperCase() === 'CRITICAL').length;
+    const avgScore = totalOpps > 0 ? Math.round(results.reduce((s, r) => s + (r.scores?.overall || 0), 0) / totalOpps) : 0;
+
+    // Stat boxes row
+    const statBoxes = [
+      { label: 'Opportunities Evaluated', value: `${totalOpps}`, color: ACCENT_BLUE, x: 0.5 },
+      { label: 'Approved for Deep-Dive', value: `${approvedOpps.length}`, color: GREEN, x: 3.7 },
+      { label: 'High Priority', value: `${highPriority}`, color: AMBER, x: 6.9 },
+      { label: 'Avg. Readiness Score', value: `${avgScore}%`, color: NAVY, x: 10.1 }
+    ];
+
+    statBoxes.forEach(box => {
+      execSlide.addShape(pptx.ShapeType.roundRect, {
+        x: box.x, y: 1.5, w: 2.9, h: 1.3,
+        fill: { color: OFF_WHITE },
+        border: { type: 'solid', color: BORDER, pt: 0.5 },
+        rectRadius: 0.08
+      });
+      // Metric Value (Centered in the upper portion)
+      execSlide.addText(box.value, {
+        x: box.x, y: 1.5, w: 2.9, h: 0.9, align: 'center', valign: 'middle',
+        fontSize: 32, fontFace: 'Arial', color: box.color, bold: true
+      });
+      // Metric Label (Positioned in the lower portion)
+      execSlide.addText(box.label, {
+        x: box.x, y: 2.3, w: 2.9, h: 0.4, align: 'center', valign: 'top',
+        fontSize: 9, fontFace: 'Arial', color: SLATE
+      });
+    });
+
+    // Key findings as individual rows with left accent bars
+    execSlide.addText("KEY FINDINGS", {
+      x: 0.5, y: 3.15, w: 12, fontSize: 14, fontFace: 'Arial', color: NAVY, bold: true
+    });
+
+    const findings = [];
+    if (approvedOpps.length > 0) {
+      findings.push(`${approvedOpps.length} of ${totalOpps} opportunities have been approved for detailed analysis and readiness planning.`);
+    }
+    const topOpp = [...results].sort((a, b) => (b.scores?.overall || 0) - (a.scores?.overall || 0))[0];
+    if (topOpp) {
+      findings.push(`Highest-scoring opportunity: "${topOpp.opportunityName}" at ${topOpp.scores?.overall}% overall readiness.`);
+    }
+    if (avgScore < 60) {
+      findings.push(`Average readiness score of ${avgScore}% indicates significant preparation work is needed before AI implementation.`);
+    } else {
+      findings.push(`Average readiness score of ${avgScore}% shows a solid foundation for AI adoption with targeted improvements.`);
+    }
+    findings.push('Each approved opportunity includes a detailed challenge matrix, readiness schedule, document checklist, and stakeholder map.');
+
+    findings.forEach((f, idx) => {
+      const fy = 3.6 + (idx * 0.55);
+      execSlide.addShape(pptx.ShapeType.rect, {
+        x: 0.5, y: fy, w: 0.06, h: 0.35, fill: { color: ACCENT_BLUE }
+      });
+      execSlide.addText(f, {
+        x: 0.8, y: fy, w: 12.0, h: 0.4, fontSize: 11, fontFace: 'Arial', color: '475569', valign: 'middle'
+      });
+    });
+
+    // Methodology note
+    const methY = 3.6 + (findings.length * 0.55) + 0.3;
+    execSlide.addShape(pptx.ShapeType.roundRect, {
+      x: 0.5, y: methY, w: 12.3, h: 0.7,
+      fill: { color: OFF_WHITE },
+      border: { type: 'solid', color: BORDER, pt: 0.5 },
+      rectRadius: 0.05
+    });
+    execSlide.addText("Methodology: Each opportunity was evaluated across three dimensions \u2014 Data Pipeline Readiness, Value Realization Potential, and Implementation Feasibility \u2014 using Finivis\u2019s proprietary DVF Assessment Framework.", {
+      x: 0.7, y: methY + 0.05, w: 11.9, h: 0.6, fontSize: 10, fontFace: 'Arial', color: SLATE, italic: true, valign: 'middle', lineSpacingMultiple: 1.2
     });
 
 
-    // 2. Evaluation Table Slide
+    // ========================================
+    // SLIDE 3: EVALUATION DASHBOARD (Color-Coded)
+    // ========================================
     const tableSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     tableSlide.addText("EVALUATION DASHBOARD", {
-      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
+      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
     });
-    tableSlide.addText("Page 2", { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+    tableSlide.addText(`${totalOpps} Identified Opportunities`, {
+      x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: SLATE, italic: true
+    });
+    addPageNum(tableSlide);
 
     const rows = [
       [
-        { text: 'Opportunity Name', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-        { text: 'Data %', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-        { text: 'Value %', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-        { text: 'Feas. %', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-        { text: 'Score %', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-        { text: 'Priority', options: { fill: '1E293B', color: 'FFFFFF', bold: true } }
+        { text: 'Opportunity Name', options: { fill: NAVY, color: WHITE, bold: true } },
+        { text: 'Data %', options: { fill: NAVY, color: WHITE, bold: true } },
+        { text: 'Value %', options: { fill: NAVY, color: WHITE, bold: true } },
+        { text: 'Feas. %', options: { fill: NAVY, color: WHITE, bold: true } },
+        { text: 'Score %', options: { fill: NAVY, color: WHITE, bold: true } },
+        { text: 'Priority', options: { fill: NAVY, color: WHITE, bold: true } }
       ]
     ];
-    results.forEach(r => {
+    results.forEach((r, idx) => {
+      const rowFill = idx % 2 === 0 ? WHITE : ALT_ROW;
       rows.push([
-        { text: r.opportunityName, options: { bold: true } },
-        r.scores.data + '%',
-        r.scores.value + '%',
-        r.scores.feasibility + '%',
-        r.scores.overall + '%',
-        r.priority
+        { text: r.opportunityName, options: { bold: true, fill: rowFill } },
+        { text: r.scores.data + '%', options: { fill: rowFill, color: getScoreColor(r.scores.data) } },
+        { text: r.scores.value + '%', options: { fill: rowFill, color: getScoreColor(r.scores.value) } },
+        { text: r.scores.feasibility + '%', options: { fill: rowFill, color: getScoreColor(r.scores.feasibility) } },
+        { text: r.scores.overall + '%', options: { fill: rowFill, color: getScoreColor(r.scores.overall), bold: true } },
+        { text: r.priority, options: { fill: rowFill, color: getPriorityColor(r.priority), bold: true } }
       ]);
     });
 
     tableSlide.addTable(rows, {
-      x: 0.4, y: 1.4, w: 12.5,
-      border: { pt: 1, color: 'E2E8F0' },
-      fill: { color: 'FFFFFF' },
-      fontSize: 10,
+      x: 0.4, y: 1.6, w: 12.5,
+      border: { pt: 0.5, color: BORDER },
+      fontSize: 11,
       fontFace: 'Arial',
       autoPage: true,
       colW: [5.5, 1.2, 1.2, 1.2, 1.2, 2.2],
       headerRow: true
     });
 
-    // 3. AI Opportunity Quadrant Slide
+    // Score legend
+    tableSlide.addText("\u25CF 70%+  Strong    \u25CF 50\u201369%  Moderate    \u25CF <50%  Needs Work", {
+      x: 0.5, y: 6.5, w: 12, fontSize: 9, fontFace: 'Arial', color: SLATE
+    });
+
+
+    // ========================================
+    // SLIDE 4: AI OPPORTUNITY QUADRANT
+    // ========================================
     const chartSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     chartSlide.addText("AI OPPORTUNITY QUADRANT", {
-      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
+      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
     });
-    chartSlide.addText("Page 3", { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+    chartSlide.addText("Feasibility vs. Value Mapping", {
+      x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: SLATE, italic: true
+    });
+    addPageNum(chartSlide);
 
     if (chartRef.current) {
       const chartBase64 = chartRef.current.toBase64Image();
       const canvas = chartRef.current.canvas;
       const aspectRatio = canvas.width / canvas.height;
       const maxW = 11.3;
-      const maxH = 5.2;
+      const maxH = 5.0;
       let imgW, imgH;
       if (maxW / maxH > aspectRatio) {
         imgH = maxH;
@@ -390,57 +545,77 @@ export default function Dashboard({
         imgH = imgW / aspectRatio;
       }
       const imgX = 1 + (maxW - imgW) / 2;
-      const imgY = 1.5 + (maxH - imgH) / 2;
+      const imgY = 1.6 + (maxH - imgH) / 2;
       chartSlide.addImage({
         data: chartBase64,
         x: imgX, y: imgY, w: imgW, h: imgH
       });
     } else {
       chartSlide.addText("Chart visual not available for export.", {
-        x: 1, y: 3, w: 11, align: 'center', color: '94A3B8', fontFace: 'Arial'
+        x: 1, y: 3, w: 11, align: 'center', color: LIGHT_SLATE, fontFace: 'Arial'
       });
     }
 
 
-    // 4. Individual Opportunity Deep-Dive Slides
-    const approvedOpps = results.filter(r => r.decision?.verdict === 'Approved');
-    let slideCounter = 4;
-
+    // ========================================
+    // OPPORTUNITY DEEP-DIVE SLIDES
+    // ========================================
     if (approvedOpps.length === 0) {
       const noOppSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       noOppSlide.addText("OPPORTUNITY DEEP-DIVE", {
-        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
       });
       noOppSlide.addText("All evaluated opportunities are currently in discovery phase. No approved opportunities are available for detailed analysis at this time.", {
-        x: 1.5, y: 3, w: 10, align: 'center', fontSize: 14, fontFace: 'Arial', color: '64748B'
+        x: 1.5, y: 3, w: 10, align: 'center', fontSize: 14, fontFace: 'Arial', color: SLATE
       });
-      noOppSlide.addText(`Page ${slideCounter}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+      addPageNum(noOppSlide);
     }
 
-    approvedOpps.forEach((opp) => {
+    approvedOpps.forEach((opp, oppIdx) => {
       const roadmap = opp.persisted_roadmap || {};
       const oppName = (opp.opportunityName || opp.name).toUpperCase();
+      const oppScore = opp.scores?.overall || 0;
+
+      // --- SECTION DIVIDER SLIDE (Dark) ---
+      const dividerSlide = pptx.addSlide({ masterName: 'DARK_SLIDE' });
+      dividerSlide.addShape(pptx.ShapeType.rect, {
+        x: 0.8, y: 3.55, w: 2.0, h: 0.04, fill: { color: ACCENT_BLUE }
+      });
+      dividerSlide.addText(`Opportunity ${oppIdx + 1} of ${approvedOpps.length}`, {
+        x: 0.8, y: 2.2, w: 10, fontSize: 14, fontFace: 'Arial', color: ACCENT_BLUE
+      });
+      dividerSlide.addText(oppName, {
+        x: 0.8, y: 2.7, w: 11, fontSize: 36, fontFace: 'Arial', color: WHITE, bold: true
+      });
+      dividerSlide.addText(`Overall Readiness Score: ${oppScore}%  |  Priority: ${opp.priority || 'N/A'}`, {
+        x: 0.8, y: 3.8, w: 10, fontSize: 16, fontFace: 'Arial', color: LIGHT_SLATE
+      });
+      dividerSlide.addText("The following slides present the challenge analysis, readiness schedule,\ndocument requirements, and stakeholder mapping for this opportunity.", {
+        x: 0.8, y: 4.6, w: 10, fontSize: 12, fontFace: 'Arial', color: SLATE, lineSpacingMultiple: 1.4
+      });
+      addPageNum(dividerSlide);
 
       // --- SLIDE A: CRITICAL CHALLENGE MATRIX ---
       const matrixSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       matrixSlide.addText("CRITICAL CHALLENGE MATRIX", {
-        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
       });
       matrixSlide.addText(oppName, {
-        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: SLATE, italic: true
       });
-      matrixSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+      addPageNum(matrixSlide);
 
       const challenges = opp.challenges || {};
+      const cardIcons = ['\u26A0', '\u2191', '\u26A1']; // warning, arrow up, lightning
       const cardConfigs = [
-        { title: "DATA PIPELINE", challenges: challenges.data, icon: '▶', x: 0.4, insight: roadmap.dataInsight || opp.ai_insight },
-        { title: "VALUE REALIZATION", challenges: challenges.value, icon: '▶', x: 4.6, insight: roadmap.valueInsight },
-        { title: "IMPLEMENTATION FEASIBILITY", challenges: (challenges.feasibility || []).concat(challenges.process || []), icon: '▶', x: 8.8, insight: roadmap.feasibilityInsight }
+        { title: "DATA PIPELINE", challenges: challenges.data, icon: cardIcons[0], x: 0.4, insight: roadmap.dataInsight || opp.ai_insight },
+        { title: "VALUE REALIZATION", challenges: challenges.value, icon: cardIcons[1], x: 4.6, insight: roadmap.valueInsight },
+        { title: "IMPLEMENTATION FEASIBILITY", challenges: (challenges.feasibility || []).concat(challenges.process || []), icon: cardIcons[2], x: 8.8, insight: roadmap.feasibilityInsight }
       ];
 
       // Calculate auto-height: estimate lines per card, use tallest
-      const charsPerLine = 38;
-      const lineH = 0.18;
+      const charsPerLine = 52;
+      const lineH = 0.22;
       const headerH = 0.5;
       const insightH = 0.5;
       const cardPadding = 0.6;
@@ -448,40 +623,39 @@ export default function Dashboard({
       const cardContentLines = cardConfigs.map(conf => {
         const items = conf.challenges || [];
         if (items.length === 0) return 1;
-        return items.reduce((total, c) => total + Math.ceil((`• ${c}`).length / charsPerLine), 0);
+        return items.reduce((total, c) => total + Math.ceil((`\u2022 ${c}`).length / charsPerLine), 0);
       });
-      const maxLines = Math.max(...cardContentLines, 3);
-      const calcH = Math.min(Math.max(headerH + (maxLines * lineH) + insightH + cardPadding, 2.5), 5.0);
+      const maxLines = Math.max(...cardContentLines);
+      const calcH = Math.min(Math.max(headerH + (maxLines * lineH) + insightH + cardPadding, 2.0), 5.0);
 
-      // Available vertical space: from 1.6 (after title+subtitle) to 6.8 (before footer)
       const availTop = 1.6;
       const availBottom = 6.8;
       const cardY = availTop + ((availBottom - availTop) - calcH) / 2;
 
       cardConfigs.forEach(conf => {
-        // Card Background
         matrixSlide.addShape(pptx.ShapeType.roundRect, {
           x: conf.x, y: cardY, w: 4.1, h: calcH,
-          fill: { color: 'F8FAFC' },
-          border: { type: 'solid', color: 'E2E8F0', pt: 0.5 },
+          fill: { color: OFF_WHITE },
+          border: { type: 'solid', color: BORDER, pt: 0.5 },
           rectRadius: 0.1
         });
-        // Header
+        // Header with accent bar
+        matrixSlide.addShape(pptx.ShapeType.rect, {
+          x: conf.x, y: cardY, w: 4.1, h: 0.04, fill: { color: NAVY }
+        });
         matrixSlide.addText(`${conf.icon}  ${conf.title}`, {
-          x: conf.x + 0.2, y: cardY + 0.2, w: 3.7, fontSize: 13, bold: true, color: '1E293B', fontFace: 'Arial'
+          x: conf.x + 0.2, y: cardY + 0.2, w: 3.7, fontSize: 13, bold: true, color: NAVY, fontFace: 'Arial'
         });
-        // Challenges
-        const bulletTxt = (conf.challenges || []).length > 0
-          ? conf.challenges.map(c => `• ${c}`).join('\n')
-          : "Standard discovery ongoing";
         const bulletH = calcH - headerH - insightH - cardPadding + 0.1;
+        const bulletTxt = (conf.challenges || []).length > 0
+          ? conf.challenges.map(c => `\u2022 ${c}`).join('\n')
+          : "Standard discovery ongoing";
         matrixSlide.addText(bulletTxt, {
-          x: conf.x + 0.2, y: cardY + 0.6, w: 3.7, h: bulletH, fontSize: 10, color: '475569', valign: 'top', breakLine: true, fontFace: 'Arial'
+          x: conf.x + 0.2, y: cardY + 0.6, w: 3.7, h: bulletH, fontSize: 10, color: '475569', valign: 'top', breakLine: true, fontFace: 'Arial', lineSpacingMultiple: 1.5
         });
-        // Footer AI Insight
         if (conf.insight) {
           matrixSlide.addText(`AI Insight: ${conf.insight}`, {
-            x: conf.x + 0.2, y: cardY + calcH - 0.5, w: 3.7, fontSize: 9, color: '64748B', italic: true, fontFace: 'Arial'
+            x: conf.x + 0.2, y: cardY + calcH - 0.5, w: 3.7, fontSize: 9, color: SLATE, italic: true, fontFace: 'Arial'
           });
         }
       });
@@ -489,36 +663,39 @@ export default function Dashboard({
       // --- SLIDE B: STEP-BY-STEP READINESS SCHEDULE ---
       const scheduleSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       scheduleSlide.addText("STEP-BY-STEP READINESS SCHEDULE", {
-        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
       });
       scheduleSlide.addText(oppName, {
-        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: SLATE, italic: true
       });
-      scheduleSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+      addPageNum(scheduleSlide);
 
       const tasks = roadmap.preAutomationTasks || [];
       const scheduleRows = [
         [
-          { text: 'Readiness Activity', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-          { text: 'Owner', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-          { text: 'Importance', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-          { text: 'Outcome Required', options: { fill: '1E293B', color: 'FFFFFF', bold: true } }
+          { text: 'Readiness Activity', options: { fill: NAVY, color: WHITE, bold: true } },
+          { text: 'Owner', options: { fill: NAVY, color: WHITE, bold: true } },
+          { text: 'Importance', options: { fill: NAVY, color: WHITE, bold: true } },
+          { text: 'Outcome Required', options: { fill: NAVY, color: WHITE, bold: true } }
         ]
       ];
 
-      tasks.forEach(t => {
+      tasks.forEach((t, idx) => {
+        const rowFill = idx % 2 === 0 ? WHITE : ALT_ROW;
+        const importance = t.importance || t.priority || 'Standard';
+        const impColor = importance.toLowerCase() === 'critical' ? RED : importance.toLowerCase() === 'high' ? AMBER : '475569';
         scheduleRows.push([
-          { text: t.task || t.item || '', options: { bold: true } },
-          t.owner || 'Client Team',
-          t.importance || t.priority || 'Standard',
-          t.description || t.reason || ''
+          { text: t.task || t.item || '', options: { bold: true, fill: rowFill } },
+          { text: t.owner || 'Client Team', options: { fill: rowFill } },
+          { text: importance, options: { fill: rowFill, color: impColor, bold: true } },
+          { text: t.description || t.reason || '', options: { fill: rowFill } }
         ]);
       });
 
       if (scheduleRows.length > 1) {
         scheduleSlide.addTable(scheduleRows, {
           x: 0.4, y: 1.6, w: 12.5,
-          border: { pt: 0.5, color: 'E2E8F0' },
+          border: { pt: 0.5, color: BORDER },
           fontSize: 10,
           fontFace: 'Arial',
           autoPage: true,
@@ -526,46 +703,53 @@ export default function Dashboard({
         });
       } else {
         scheduleSlide.addText("No readiness activities have been defined for this opportunity.", {
-          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: '94A3B8', italic: true
+          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: LIGHT_SLATE, italic: true
         });
       }
 
       const timelineTxt = roadmap.kickoffReadiness?.suggestedTimeline || opp.roiTimeline || "TBD";
-      scheduleSlide.addText(`STRATEGIC TIMELINE: ${timelineTxt}`, {
-        x: 0.4, y: 6.4, w: 12.5, fontSize: 10, fontFace: 'Arial', color: '1E293B', bold: true
+      scheduleSlide.addShape(pptx.ShapeType.roundRect, {
+        x: 0.4, y: 6.2, w: 12.5, h: 0.6,
+        fill: { color: OFF_WHITE },
+        border: { type: 'solid', color: BORDER, pt: 0.5 },
+        rectRadius: 0.05
+      });
+      scheduleSlide.addText(`STRATEGIC TIMELINE:  ${timelineTxt}`, {
+        x: 0.6, y: 6.25, w: 12.1, h: 0.5, fontSize: 10, fontFace: 'Arial', color: NAVY, bold: true, valign: 'middle'
       });
 
       // --- SLIDE C: DOCUMENTS REQUIRED FROM CLIENT ---
       const docsSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       docsSlide.addText("DOCUMENTS REQUIRED FROM CLIENT", {
-        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
       });
       docsSlide.addText(oppName, {
-        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: SLATE, italic: true
       });
-      docsSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+      addPageNum(docsSlide);
 
       const docs = roadmap.documentChecklist || roadmap.documentRequirements || [];
       const docRows = [
         [
-          { text: 'Asset / Document Name', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-          { text: 'Format', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-          { text: 'Strategic Importance / Logic', options: { fill: '1E293B', color: 'FFFFFF', bold: true } }
+          { text: 'Asset / Document Name', options: { fill: NAVY, color: WHITE, bold: true } },
+          { text: 'Format', options: { fill: NAVY, color: WHITE, bold: true } },
+          { text: 'Strategic Importance / Logic', options: { fill: NAVY, color: WHITE, bold: true } }
         ]
       ];
 
-      docs.forEach(d => {
+      docs.forEach((d, idx) => {
+        const rowFill = idx % 2 === 0 ? WHITE : ALT_ROW;
         docRows.push([
-          { text: d.documentName || d.item || '', options: { bold: true } },
-          d.format || 'Digital',
-          d.reason || d.description || ''
+          { text: d.documentName || d.item || '', options: { bold: true, fill: rowFill } },
+          { text: d.format || 'Digital', options: { fill: rowFill } },
+          { text: d.reason || d.description || '', options: { fill: rowFill } }
         ]);
       });
 
       if (docRows.length > 1) {
         docsSlide.addTable(docRows, {
           x: 0.4, y: 1.6, w: 12.5,
-          border: { pt: 0.5, color: 'E2E8F0' },
+          border: { pt: 0.5, color: BORDER },
           fontSize: 10,
           fontFace: 'Arial',
           autoPage: true,
@@ -573,41 +757,42 @@ export default function Dashboard({
         });
       } else {
         docsSlide.addText("No document requirements have been defined for this opportunity.", {
-          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: '94A3B8', italic: true
+          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: LIGHT_SLATE, italic: true
         });
       }
 
       // --- SLIDE D: STAKEHOLDER CHECKLIST ---
       const stakeSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       stakeSlide.addText("STAKEHOLDER CHECKLIST", {
-        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
       });
       stakeSlide.addText(oppName, {
-        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: SLATE, italic: true
       });
-      stakeSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+      addPageNum(stakeSlide);
 
       const stakeholders = roadmap.stakeholderChecklist || [];
       const stakeRows = [
         [
-          { text: 'Role / Designation', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-          { text: 'Involvement Stage', options: { fill: '1E293B', color: 'FFFFFF', bold: true } },
-          { text: 'Purpose of Engagement', options: { fill: '1E293B', color: 'FFFFFF', bold: true } }
+          { text: 'Role / Designation', options: { fill: NAVY, color: WHITE, bold: true } },
+          { text: 'Involvement Stage', options: { fill: NAVY, color: WHITE, bold: true } },
+          { text: 'Purpose of Engagement', options: { fill: NAVY, color: WHITE, bold: true } }
         ]
       ];
 
-      stakeholders.forEach(s => {
+      stakeholders.forEach((s, idx) => {
+        const rowFill = idx % 2 === 0 ? WHITE : ALT_ROW;
         stakeRows.push([
-          { text: s.role || '', options: { bold: true } },
-          s.involvement || 'Ongoing',
-          s.reason || ''
+          { text: s.role || '', options: { bold: true, fill: rowFill } },
+          { text: s.involvement || 'Ongoing', options: { fill: rowFill } },
+          { text: s.reason || '', options: { fill: rowFill } }
         ]);
       });
 
       if (stakeRows.length > 1) {
         stakeSlide.addTable(stakeRows, {
           x: 0.4, y: 1.6, w: 12.5,
-          border: { pt: 0.5, color: 'E2E8F0' },
+          border: { pt: 0.5, color: BORDER },
           fontSize: 10,
           fontFace: 'Arial',
           autoPage: true,
@@ -615,10 +800,113 @@ export default function Dashboard({
         });
       } else {
         stakeSlide.addText("No stakeholder information has been defined for this opportunity.", {
-          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: '94A3B8', italic: true
+          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: LIGHT_SLATE, italic: true
         });
       }
     });
+
+
+    // ========================================
+    // RECOMMENDATIONS & NEXT STEPS SLIDE
+    // ========================================
+    const recoSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+    recoSlide.addText("RECOMMENDATIONS & NEXT STEPS", {
+      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
+    });
+    addPageNum(recoSlide);
+
+    // Build dynamic recommendations
+    const recoItems = [];
+    if (approvedOpps.length > 0) {
+      const topApproved = [...approvedOpps].sort((a, b) => (b.scores?.overall || 0) - (a.scores?.overall || 0))[0];
+      recoItems.push({
+        title: 'Prioritize Highest-Readiness Opportunity',
+        desc: `Begin with "${topApproved.opportunityName}" (${topApproved.scores?.overall}% readiness) as the pilot initiative to demonstrate early value.`
+      });
+    }
+    recoItems.push({
+      title: 'Complete Document Collection',
+      desc: 'Each approved opportunity has a detailed document checklist. Initiating collection immediately will prevent delays in the discovery phase.'
+    });
+    recoItems.push({
+      title: 'Engage Key Stakeholders Early',
+      desc: 'Stakeholder buy-in is critical for AI adoption. Schedule kickoff meetings with identified roles to align expectations and secure data access.'
+    });
+    recoItems.push({
+      title: 'Address Data Pipeline Gaps',
+      desc: 'Data readiness is the most common bottleneck. Invest in data cleanup and standardization before automation development begins.'
+    });
+
+    // Calculate spacing based on item count to fill available space (1.4 to 5.9)
+    const recoAvailH = 4.5;
+    const recoItemH = recoAvailH / recoItems.length;
+
+    recoItems.forEach((item, idx) => {
+      const yPos = 1.4 + (idx * recoItemH);
+
+      // Card background
+      recoSlide.addShape(pptx.ShapeType.roundRect, {
+        x: 0.5, y: yPos, w: 12.3, h: recoItemH - 0.15,
+        fill: { color: idx % 2 === 0 ? OFF_WHITE : WHITE },
+        border: { type: 'solid', color: BORDER, pt: 0.5 },
+        rectRadius: 0.06
+      });
+
+      // Number badge
+      recoSlide.addShape(pptx.ShapeType.ellipse, {
+        x: 0.7, y: yPos + (recoItemH - 0.15) / 2 - 0.2, w: 0.4, h: 0.4,
+        fill: { color: NAVY }
+      });
+      recoSlide.addText(`${idx + 1}`, {
+        x: 0.7, y: yPos + (recoItemH - 0.15) / 2 - 0.2, w: 0.4, h: 0.4,
+        align: 'center', valign: 'middle',
+        fontSize: 14, fontFace: 'Arial', color: WHITE, bold: true
+      });
+
+      // Title
+      recoSlide.addText(item.title, {
+        x: 1.3, y: yPos + 0.1, w: 11.2, h: 0.3,
+        fontSize: 13, fontFace: 'Arial', color: NAVY, bold: true, valign: 'middle'
+      });
+      // Description
+      recoSlide.addText(item.desc, {
+        x: 1.3, y: yPos + 0.42, w: 11.2, h: recoItemH - 0.7,
+        fontSize: 11, fontFace: 'Arial', color: '475569', valign: 'top', lineSpacingMultiple: 1.3
+      });
+    });
+
+    // Proposed timeline bar
+    recoSlide.addShape(pptx.ShapeType.roundRect, {
+      x: 0.5, y: 6.15, w: 12.3, h: 0.55,
+      fill: { color: NAVY },
+      rectRadius: 0.05
+    });
+    recoSlide.addText("PROPOSED ENGAGEMENT:   Discovery (Weeks 1\u20132)   \u2192   Data Preparation (Weeks 3\u20134)   \u2192   Development Sprint (Weeks 5\u20138)   \u2192   UAT & Go-Live (Weeks 9\u201310)", {
+      x: 0.7, y: 6.15, w: 11.9, h: 0.55, fontSize: 10, fontFace: 'Arial', color: WHITE, bold: true, valign: 'middle'
+    });
+
+
+    // ========================================
+    // THANK YOU / CONTACT SLIDE (Dark)
+    // ========================================
+    const thanksSlide = pptx.addSlide({ masterName: 'DARK_SLIDE' });
+    thanksSlide.addShape(pptx.ShapeType.rect, {
+      x: 0.8, y: 3.65, w: 2.0, h: 0.04, fill: { color: ACCENT_BLUE }
+    });
+    thanksSlide.addText("Thank You", {
+      x: 0.8, y: 2.2, w: 10, fontSize: 48, fontFace: 'Arial', color: WHITE, bold: true
+    });
+    thanksSlide.addText("We look forward to partnering with you on your AI transformation journey.", {
+      x: 0.8, y: 3.9, w: 10, fontSize: 16, fontFace: 'Arial', color: LIGHT_SLATE, lineSpacingMultiple: 1.4
+    });
+    thanksSlide.addText("Finivis  |  Prepare for Tomorrow\nwww.finivis.com", {
+      x: 0.8, y: 5.0, w: 10, fontSize: 14, fontFace: 'Arial', color: ACCENT_BLUE, lineSpacingMultiple: 1.5
+    });
+    thanksSlide.addText("CONFIDENTIAL \u2014 This document contains proprietary information prepared exclusively for the intended recipient.", {
+      x: 0.8, y: 6.8, w: 11, fontSize: 9, fontFace: 'Arial', color: SLATE
+    });
+    addPageNum(thanksSlide);
+
 
     pptx.writeFile({ fileName: `Finivis_AI_Strategy_${clientName || 'Export'}_${Date.now()}.pptx` });
   };
