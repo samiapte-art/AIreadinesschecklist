@@ -146,16 +146,16 @@ export default function Dashboard({
     maintainAspectRatio: false,
     layout: {
       padding: {
-        top: 40,
-        right: 40,
-        bottom: 20,
-        left: 20
+        top: 60,
+        right: 60,
+        bottom: 30,
+        left: 30
       }
     },
     scales: {
       x: {
-        min: 0,
-        max: 100,
+        min: -5,
+        max: 105,
         grid: {
           color: 'rgba(0, 0, 0, 0.03)',
           drawBorder: false,
@@ -170,8 +170,8 @@ export default function Dashboard({
         ticks: { color: '#94A3B8', font: { size: 10 } }
       },
       y: {
-        min: 0,
-        max: 100,
+        min: -5,
+        max: 105,
         grid: {
           color: 'rgba(0, 0, 0, 0.03)',
           drawBorder: false,
@@ -191,9 +191,18 @@ export default function Dashboard({
         display: false // Use custom legend or none for cleaner look
       },
       datalabels: {
-        anchor: 'end', // Shift anchor to edges of bubbles
-        align: 'top',
-        offset: 12, // Increased offset for better separation
+        anchor: (context) => {
+          const item = context.dataset.data[context.dataIndex];
+          return item.y > 90 ? 'start' : 'end';
+        },
+        align: (context) => {
+          const item = context.dataset.data[context.dataIndex];
+          if (item.y > 90) return 'bottom';
+          if (item.x > 90) return 'left';
+          if (item.x < 10) return 'right';
+          return 'top';
+        },
+        offset: 8,
         display: 'auto', 
         clamp: true,
         formatter: (value, context) => {
