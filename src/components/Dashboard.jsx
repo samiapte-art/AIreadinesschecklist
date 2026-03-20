@@ -299,7 +299,7 @@ export default function Dashboard({
 
   const exportPPT = () => {
     const pptx = new pptxgen();
-    
+
     // Set presentation properties
     pptx.layout = 'LAYOUT_WIDE';
     pptx.defineSlideMaster({
@@ -310,13 +310,11 @@ export default function Dashboard({
         { image: { x: 11.5, y: 0.2, w: 1.2, h: 0.8, path: '/logo.png', sizing: { type: 'contain' } } },
         // Footer: Center
         { text: { text: "Private & Confidential", options: { x: 0, y: 7.1, w: '100%', align: 'center', fontSize: 10, color: '94A3B8', fontFace: 'Arial' } } },
-        // Footer: Page Number
-        { text: { text: "Page ", options: { x: 12.2, y: 7.1, w: 0.6, align: 'right', fontSize: 10, color: '94A3B8' } } }
       ]
     });
 
     // 1. Title Slide
-    const titleSlide = pptx.addSlide();
+    const titleSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     titleSlide.addText("AI OPPORTUNITY ASSESSMENT", {
       x: 0, y: '35%', w: '100%', align: 'center',
       fontSize: 48, fontFace: 'Arial', color: '1E293B', bold: true
@@ -329,18 +327,14 @@ export default function Dashboard({
       x: 0, y: '62%', w: '100%', align: 'center',
       fontSize: 14, fontFace: 'Arial', color: '94A3B8'
     });
-    // Add "Private & Confidential" to title slide too
-    titleSlide.addText("Private & Confidential", {
-      x: 0, y: '92%', w: '100%', align: 'center', fontSize: 10, color: '94A3B8'
-    });
 
 
     // 2. Evaluation Table Slide
     const tableSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     tableSlide.addText("EVALUATION DASHBOARD", {
-      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
     });
-    tableSlide.addText("2", { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
+    tableSlide.addText("Page 2", { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
     const rows = [
       [
@@ -354,7 +348,7 @@ export default function Dashboard({
     ];
     results.forEach(r => {
       rows.push([
-        r.opportunityName,
+        { text: r.opportunityName, options: { bold: true } },
         r.scores.data + '%',
         r.scores.value + '%',
         r.scores.feasibility + '%',
@@ -377,9 +371,9 @@ export default function Dashboard({
     // 3. AI Opportunity Quadrant Slide
     const chartSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     chartSlide.addText("AI OPPORTUNITY QUADRANT", {
-      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
     });
-    chartSlide.addText("3", { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
+    chartSlide.addText("Page 3", { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
     if (chartRef.current) {
       const chartBase64 = chartRef.current.toBase64Image();
@@ -390,7 +384,7 @@ export default function Dashboard({
       });
     } else {
       chartSlide.addText("Chart visual not available for export.", {
-        x: 1, y: 3, w: 11, align: 'center', color: '94A3B8'
+        x: 1, y: 3, w: 11, align: 'center', color: '94A3B8', fontFace: 'Arial'
       });
     }
 
@@ -398,7 +392,18 @@ export default function Dashboard({
     // 4. Individual Opportunity Deep-Dive Slides
     const approvedOpps = results.filter(r => r.decision?.verdict === 'Approved');
     let slideCounter = 4;
-    
+
+    if (approvedOpps.length === 0) {
+      const noOppSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+      noOppSlide.addText("OPPORTUNITY DEEP-DIVE", {
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+      });
+      noOppSlide.addText("All evaluated opportunities are currently in discovery phase. No approved opportunities are available for detailed analysis at this time.", {
+        x: 1.5, y: 3, w: 10, align: 'center', fontSize: 14, fontFace: 'Arial', color: '64748B'
+      });
+      noOppSlide.addText(`Page ${slideCounter}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
+    }
+
     approvedOpps.forEach((opp) => {
       const roadmap = opp.persisted_roadmap || {};
       const oppName = (opp.opportunityName || opp.name).toUpperCase();
@@ -406,18 +411,18 @@ export default function Dashboard({
       // --- SLIDE A: CRITICAL CHALLENGE MATRIX ---
       const matrixSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       matrixSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
       });
       matrixSlide.addText("Critical Challenge Matrix", {
         x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
-      matrixSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
+      matrixSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
       const challenges = opp.challenges || {};
       const cardConfigs = [
-        { title: "DATA PIPELINE", challenges: challenges.data, icon: '⛃', x: 0.4, insight: roadmap.dataInsight || opp.ai_insight },
-        { title: "VALUE REALIZATION", challenges: challenges.value, icon: '📈', x: 4.6, insight: roadmap.valueInsight },
-        { title: "IMPLEMENTATION FEASIBILITY", challenges: (challenges.feasibility || []).concat(challenges.process || []), icon: '⚡', x: 8.8, insight: roadmap.feasibilityInsight }
+        { title: "DATA PIPELINE", challenges: challenges.data, icon: '▶', x: 0.4, insight: roadmap.dataInsight || opp.ai_insight },
+        { title: "VALUE REALIZATION", challenges: challenges.value, icon: '▶', x: 4.6, insight: roadmap.valueInsight },
+        { title: "IMPLEMENTATION FEASIBILITY", challenges: (challenges.feasibility || []).concat(challenges.process || []), icon: '▶', x: 8.8, insight: roadmap.feasibilityInsight }
       ];
 
       cardConfigs.forEach(conf => {
@@ -430,19 +435,19 @@ export default function Dashboard({
         });
         // Header
         matrixSlide.addText(`${conf.icon}  ${conf.title}`, {
-          x: conf.x + 0.2, y: 1.7, w: 3.7, fontSize: 13, bold: true, color: '1E293B'
+          x: conf.x + 0.2, y: 1.7, w: 3.7, fontSize: 13, bold: true, color: '1E293B', fontFace: 'Arial'
         });
         // Challenges
-        const bulletTxt = (conf.challenges || []).length > 0 
+        const bulletTxt = (conf.challenges || []).length > 0
           ? conf.challenges.map(c => `• ${c}`).join('\n')
           : "Standard discovery ongoing";
         matrixSlide.addText(bulletTxt, {
-          x: conf.x + 0.2, y: 2.1, w: 3.7, h: 4.0, fontSize: 10, color: '475569', valign: 'top', breakLine: true
+          x: conf.x + 0.2, y: 2.1, w: 3.7, h: 3.4, fontSize: 10, color: '475569', valign: 'top', breakLine: true, fontFace: 'Arial'
         });
         // Footer AI Insight
         if (conf.insight) {
           matrixSlide.addText(`AI Insight: ${conf.insight}`, {
-            x: conf.x + 0.2, y: 6.3, w: 3.7, fontSize: 9, color: '64748B', italic: true
+            x: conf.x + 0.2, y: 5.7, w: 3.7, fontSize: 9, color: '64748B', italic: true, fontFace: 'Arial'
           });
         }
       });
@@ -450,12 +455,12 @@ export default function Dashboard({
       // --- SLIDE B: STEP-BY-STEP READINESS SCHEDULE ---
       const scheduleSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       scheduleSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
       });
       scheduleSlide.addText("Step-By-Step Readiness Schedule", {
         x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
-      scheduleSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
+      scheduleSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
       const tasks = roadmap.preAutomationTasks || [];
       const scheduleRows = [
@@ -479,27 +484,32 @@ export default function Dashboard({
       if (scheduleRows.length > 1) {
         scheduleSlide.addTable(scheduleRows, {
           x: 0.4, y: 1.3, w: 12.5,
-          border: { pt: 0.5, color: 'CBD5E1' },
+          border: { pt: 0.5, color: 'E2E8F0' },
           fontSize: 10,
+          fontFace: 'Arial',
           autoPage: true,
           colW: [3.5, 2, 1.5, 5.5]
+        });
+      } else {
+        scheduleSlide.addText("No readiness activities have been defined for this opportunity.", {
+          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: '94A3B8', italic: true
         });
       }
 
       const timelineTxt = roadmap.kickoffReadiness?.suggestedTimeline || opp.roiTimeline || "TBD";
       scheduleSlide.addText(`STRATEGIC TIMELINE: ${timelineTxt}`, {
-        x: 0.4, y: 6.7, w: 12.5, fontSize: 12, fontFace: 'Arial', color: '1E293B', bold: true
+        x: 0.4, y: 6.4, w: 12.5, fontSize: 10, fontFace: 'Arial', color: '1E293B', bold: true
       });
 
       // --- SLIDE C: DOCUMENTS REQUIRED FROM CLIENT ---
       const docsSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       docsSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
       });
       docsSlide.addText("Documents Required From Client", {
         x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
-      docsSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
+      docsSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
       const docs = roadmap.documentChecklist || roadmap.documentRequirements || [];
       const docRows = [
@@ -521,22 +531,27 @@ export default function Dashboard({
       if (docRows.length > 1) {
         docsSlide.addTable(docRows, {
           x: 0.4, y: 1.3, w: 12.5,
-          border: { pt: 0.5, color: 'CBD5E1' },
+          border: { pt: 0.5, color: 'E2E8F0' },
           fontSize: 10,
+          fontFace: 'Arial',
           autoPage: true,
           colW: [4, 1.5, 7]
+        });
+      } else {
+        docsSlide.addText("No document requirements have been defined for this opportunity.", {
+          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: '94A3B8', italic: true
         });
       }
 
       // --- SLIDE D: STAKEHOLDER CHECKLIST ---
       const stakeSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       stakeSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
       });
       stakeSlide.addText("Stakeholder Checklist", {
         x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
-      stakeSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
+      stakeSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
       const stakeholders = roadmap.stakeholderChecklist || [];
       const stakeRows = [
@@ -558,10 +573,15 @@ export default function Dashboard({
       if (stakeRows.length > 1) {
         stakeSlide.addTable(stakeRows, {
           x: 0.4, y: 1.3, w: 12.5,
-          border: { pt: 0.5, color: 'CBD5E1' },
+          border: { pt: 0.5, color: 'E2E8F0' },
           fontSize: 10,
+          fontFace: 'Arial',
           autoPage: true,
           colW: [3.5, 2.5, 6.5]
+        });
+      } else {
+        stakeSlide.addText("No stakeholder information has been defined for this opportunity.", {
+          x: 1.5, y: 3, w: 10, align: 'center', fontSize: 12, fontFace: 'Arial', color: '94A3B8', italic: true
         });
       }
     });
