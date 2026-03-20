@@ -15,8 +15,51 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as xlsx from 'xlsx';
+import pptxgen from 'pptxgenjs';
 
-ChartJS.register(LinearScale, PointElement, BubbleController, Tooltip, Legend, ChartDataLabels);
+// Custom plugin to draw quadrant labels in the background
+const quadrantLabelsPlugin = {
+  id: 'quadrantLabels',
+  beforeDraw(chart) {
+    const { ctx, chartArea: { top, bottom, left, right, width, height } } = chart;
+    const centerX = left + width / 2;
+    const centerY = top + height / 2;
+
+    ctx.save();
+    ctx.font = 'bold 12px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(148, 163, 184, 0.2)'; // Faint gray
+
+    // Quadrant 1 (Top Right): Strategic / Quick Wins
+    ctx.fillText('STRATEGIC QUICK WINS', left + width * 0.75, top + height * 0.25);
+    
+    // Quadrant 2 (Top Left): High Value / Implementation Challenge
+    ctx.fillText('EXPERIMENTAL / HIGH VALUE', left + width * 0.25, top + height * 0.25);
+
+    // Quadrant 3 (Bottom Left): Not Recommended
+    ctx.fillText('LONG-TERM / LOW PRIORITY', left + width * 0.25, top + height * 0.75);
+
+    // Quadrant 4 (Bottom Right): Feasible / Lower Value
+    ctx.fillText('OPERATIONAL EFFICIENCY', left + width * 0.75, top + height * 0.75);
+
+    // Draw center lines
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([10, 5]);
+    ctx.beginPath();
+    ctx.moveTo(centerX, top);
+    ctx.lineTo(centerX, bottom);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(left, centerY);
+    ctx.lineTo(right, centerY);
+    ctx.stroke();
+    ctx.restore();
+  }
+};
+
+ChartJS.register(LinearScale, PointElement, BubbleController, Tooltip, Legend, ChartDataLabels, quadrantLabelsPlugin);
 
 // Risk-based color mapping for bubble chart
 function getRiskColor(riskScore) {
@@ -58,6 +101,7 @@ export default function Dashboard({
   aiError
 }) {
   const [selectedOppIndex, setSelectedOppIndex] = useState(null);
+  const chartRef = React.useRef(null);
 
   const results = useMemo(() => {
     if (scoringMode === 'ai' && aiEvaluations?.length) {
@@ -84,7 +128,7 @@ export default function Dashboard({
         data: results.map(r => ({
           x: r.scores.feasibility,
           y: r.scores.value,
-          r: Math.max(4, r.scores.data / 5), // Bubble radius proportional to data readiness
+          r: Math.max(6, (r.scores.data || 0) / 4), // Improved bubble scaling
           name: r.opportunityName,
           priority: r.priority,
           risk: r.scores.risk,
@@ -98,38 +142,91 @@ export default function Dashboard({
   };
 
   const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    layout: {
+      padding: {
+        top: 40,
+        right: 40,
+        bottom: 20,
+        left: 20
+      }
+    },
     scales: {
       x: {
-        min: 0, max: 100,
-        title: { display: true, text: 'Implementation Ease (Feasibility %)' },
+        min: 0,
+        max: 100,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.03)',
+          drawBorder: false,
+          borderDash: [5, 5]
+        },
+        title: { 
+          display: true, 
+          text: 'IMPLEMENTATION FEASIBILITY (%)',
+          color: '#94A3B8',
+          font: { size: 10, weight: 'bold', family: 'Inter' }
+        },
+        ticks: { color: '#94A3B8', font: { size: 10 } }
       },
       y: {
-        min: 0, max: 100,
-        title: { display: true, text: 'Business Impact (Value %)' }
+        min: 0,
+        max: 100,
+        grid: {
+          color: 'rgba(0, 0, 0, 0.03)',
+          drawBorder: false,
+          borderDash: [5, 5]
+        },
+        title: { 
+          display: true, 
+          text: 'BUSINESS IMPACT / VALUE (%)',
+          color: '#94A3B8',
+          font: { size: 10, weight: 'bold', family: 'Inter' }
+        },
+        ticks: { color: '#94A3B8', font: { size: 10 } }
       }
     },
     plugins: {
+      legend: {
+        display: false // Use custom legend or none for cleaner look
+      },
       datalabels: {
-        anchor: 'end',
+        anchor: 'end', // Shift anchor to edges of bubbles
         align: 'top',
+        offset: 12, // Increased offset for better separation
+        display: 'auto', 
+        clamp: true,
         formatter: (value, context) => {
-          return context.dataset.data[context.dataIndex].name || 'Unnamed';
+          const item = context.dataset.data[context.dataIndex];
+          // Only show labels for bubbles with some score or significant size
+          return item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name;
         },
         font: {
-          weight: 'bold',
-          size: 11
+          family: 'Inter',
+          weight: '800',
+          size: 10
         },
-        color: '#4B5563',
-        offset: 4
+        color: '#1E293B',
+        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        borderRadius: 4,
+        padding: 4,
+        textAlign: 'center'
       },
       tooltip: {
+        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+        titleFont: { size: 13, weight: 'bold', family: 'Inter' },
+        bodyFont: { size: 11, family: 'Inter' },
+        padding: 12,
+        cornerRadius: 12,
+        displayColors: true,
         callbacks: {
           label: (ctx) => {
             const d = ctx.raw;
             return [
-              `${d.name}`,
-              `Value: ${d.y}% | Feasibility: ${d.x}%`,
-              `Data Readiness: ${d.dataScore}% | Risk: ${d.risk}%`,
+              `Value: ${d.y}%`,
+              `Feasibility: ${d.x}%`,
+              `Data Readiness: ${d.dataScore}%`,
+              `Risk: ${d.risk}%`,
               `Priority: ${d.priority}`
             ];
           }
@@ -198,6 +295,239 @@ export default function Dashboard({
     const wb = xlsx.utils.book_new();
     xlsx.utils.book_append_sheet(wb, ws, "Opportunities");
     xlsx.writeFile(wb, `Finivis_AI_Opportunities_${Date.now()}.xlsx`);
+  };
+
+  const exportPPT = () => {
+    const pptx = new pptxgen();
+    
+    // Set presentation properties
+    pptx.layout = 'LAYOUT_WIDE';
+    pptx.defineSlideMaster({
+      title: 'MASTER_SLIDE',
+      background: { color: 'F8FAFC' },
+      objects: [
+        { rect: { x: 0, y: 0, w: '100%', h: 0.6, fill: { color: '1A56CC' } } },
+        { text: { text: "Finivis | AI Readiness Framework", options: { x: 0.4, y: 0.15, fontFace: 'Arial', fontSize: 14, color: 'FFFFFF', bold: true } } }
+      ]
+    });
+
+    // 1. Title Slide
+    const titleSlide = pptx.addSlide();
+    titleSlide.addText("AI OPPORTUNITY EVALUATION", {
+      x: 0, y: '35%', w: '100%', align: 'center',
+      fontSize: 44, fontFace: 'Arial', color: '1A56CC', bold: true
+    });
+    titleSlide.addText(clientName || "Executive Assessment", {
+      x: 0, y: '50%', w: '100%', align: 'center',
+      fontSize: 28, fontFace: 'Arial', color: '64748B'
+    });
+    titleSlide.addText(new Date().toLocaleDateString(), {
+      x: 0, y: '65%', w: '100%', align: 'center',
+      fontSize: 14, fontFace: 'Arial', color: '94A3B8'
+    });
+
+    // 2. Evaluation Table Slide
+    const tableSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+    tableSlide.addText("EVALUATION DASHBOARD", {
+      x: 0.4, y: 0.8, w: '90%', fontSize: 24, fontFace: 'Arial', color: '1E293B', bold: true
+    });
+
+    const rows = [
+      ['Opportunity Name', 'Data %', 'Value %', 'Feasibility %', 'Overall %', 'Priority']
+    ];
+    results.forEach(r => {
+      rows.push([
+        r.opportunityName,
+        r.scores.data + '%',
+        r.scores.value + '%',
+        r.scores.feasibility + '%',
+        r.scores.overall + '%',
+        r.priority
+      ]);
+    });
+
+    tableSlide.addTable(rows, {
+      x: 0.4, y: 1.4, w: 12.5,
+      border: { pt: 1, color: 'E2E8F0' },
+      fill: { color: 'FFFFFF' },
+      fontSize: 10,
+      fontFace: 'Arial',
+      autoPage: true,
+      colW: [5.5, 1.2, 1.2, 1.2, 1.2, 2.2],
+      headerRow: true,
+      className: 'evaluation-table'
+    });
+
+    // 3. AI Opportunity Quadrant Slide
+    const chartSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+    chartSlide.addText("AI OPPORTUNITY QUADRANT", {
+      x: 0.4, y: 0.8, w: '90%', fontSize: 24, fontFace: 'Arial', color: '1E293B', bold: true
+    });
+
+    if (chartRef.current) {
+      const chartBase64 = chartRef.current.toBase64Image();
+      chartSlide.addImage({
+        data: chartBase64,
+        x: 1, y: 1.4, w: 11, h: 5.5
+      });
+    } else {
+      chartSlide.addText("Chart visual not available for export.", {
+        x: 1, y: 3, w: 11, align: 'center', color: '94A3B8'
+      });
+    }
+
+    // 4. Individual Opportunity Deep-Dive Slides
+    const approvedOpps = results.filter(r => r.decision?.verdict === 'Approved');
+    
+    approvedOpps.forEach((opp, oppIdx) => {
+      const roadmap = opp.persisted_roadmap || {};
+      const oppName = (opp.opportunityName || opp.name).toUpperCase();
+
+      // --- SLIDE A: CRITICAL CHALLENGE MATRIX ---
+      const matrixSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+      matrixSlide.addText(`${oppName}\nCRITICAL CHALLENGE MATRIX`, {
+        x: 0.4, y: 0.8, w: '90%', fontSize: 20, fontFace: 'Arial', color: '1E293B', bold: true
+      });
+
+      const challenges = opp.challenges || {};
+      const matrixRows = [
+        [
+          { text: "DATA CHALLENGES", options: { fill: 'F1F5F9', color: '475569', bold: true, align: 'center' } },
+          { text: "PROCESS CHALLENGES", options: { fill: 'F1F5F9', color: '475569', bold: true, align: 'center' } }
+        ],
+        [
+          { text: (challenges.data || []).join('\n') || 'No critical data challenges identified', options: { fontSize: 10, valign: 'top' } },
+          { text: (challenges.process || []).join('\n') || 'No critical process challenges identified', options: { fontSize: 10, valign: 'top' } }
+        ],
+        [
+          { text: "VALUE REALIZATION", options: { fill: 'FFE4E6', color: 'E11D48', bold: true, align: 'center' } },
+          { text: "FEASIBILITY & TECH", options: { fill: 'F1F5F9', color: '475569', bold: true, align: 'center' } }
+        ],
+        [
+          { text: (challenges.value || []).join('\n') || 'No critical value challenges identified', options: { fontSize: 10, valign: 'top' } },
+          { text: (challenges.feasibility || []).join('\n') || 'No technical feasibility constraints noted', options: { fontSize: 10, valign: 'top' } }
+        ]
+      ];
+
+      matrixSlide.addTable(matrixRows, {
+        x: 0.4, y: 1.5, w: 12.5, h: 5,
+        border: { pt: 1, color: 'E2E8F0' },
+        colW: [6.25, 6.25],
+        valign: 'middle'
+      });
+
+      // --- SLIDE B: STEP-BY-STEP READINESS SCHEDULE ---
+      const scheduleSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+      scheduleSlide.addText(`${oppName}\nPRE-AUTOMATION READINESS SCHEDULE`, {
+        x: 0.4, y: 0.8, w: '90%', fontSize: 20, fontFace: 'Arial', color: '1E293B', bold: true
+      });
+
+      const tasks = roadmap.preAutomationTasks || [];
+      const scheduleRows = [
+        [
+          { text: 'Readiness Activity', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } },
+          { text: 'Owner', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } },
+          { text: 'Importance', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } },
+          { text: 'Outcome Required', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } }
+        ]
+      ];
+
+      tasks.forEach(t => {
+        scheduleRows.push([
+          { text: t.task || t.item || '', options: { bold: true } },
+          t.owner || 'Client Team',
+          t.importance || t.priority || 'Standard',
+          t.description || t.reason || ''
+        ]);
+      });
+
+      if (scheduleRows.length > 1) {
+        scheduleSlide.addTable(scheduleRows, {
+          x: 0.4, y: 1.5, w: 12.5,
+          border: { pt: 0.5, color: 'E2E8F0' },
+          fontSize: 10,
+          autoPage: true,
+          colW: [3.5, 2, 1.5, 5.5]
+        });
+      } else {
+        scheduleSlide.addText("No specific readiness tasks defined. Complete standard discovery.", {
+          x: 1, y: 3, w: 11, align: 'center', color: '94A3B8'
+        });
+      }
+
+      const timelineTxt = roadmap.kickoffReadiness?.suggestedTimeline || opp.roiTimeline || "TBD";
+      scheduleSlide.addText(`STRATEGIC TIMELINE: ${timelineTxt}`, {
+        x: 0.4, y: 6.8, w: 12.5, fontSize: 12, fontFace: 'Arial', color: '1A56CC', bold: true
+      });
+
+      // --- SLIDE C: DOCUMENTS REQUIRED FROM CLIENT ---
+      const docsSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+      docsSlide.addText(`${oppName}\nINFORMATION ASSETS & DOCUMENTATION REQUEST`, {
+        x: 0.4, y: 0.8, w: '90%', fontSize: 20, fontFace: 'Arial', color: '1E293B', bold: true
+      });
+
+      const docs = roadmap.documentChecklist || roadmap.documentRequirements || [];
+      const docRows = [
+        [
+          { text: 'Asset / Document Name', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } },
+          { text: 'Format', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } },
+          { text: 'Strategic Importance / Logic', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } }
+        ]
+      ];
+
+      docs.forEach(d => {
+        docRows.push([
+          { text: d.documentName || d.item || '', options: { bold: true } },
+          d.format || 'Digital',
+          d.reason || d.description || ''
+        ]);
+      });
+
+      if (docRows.length > 1) {
+        docsSlide.addTable(docRows, {
+          x: 0.4, y: 1.5, w: 12.5,
+          border: { pt: 0.5, color: 'E2E8F0' },
+          fontSize: 10,
+          autoPage: true,
+          colW: [4, 1.5, 7]
+        });
+      }
+
+      // --- SLIDE D: STAKEHOLDER CHECKLIST ---
+      const stakeSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
+      stakeSlide.addText(`${oppName}\nSTAKEHOLDER ALIGNMENT & INVOLVEMENT`, {
+        x: 0.4, y: 0.8, w: '90%', fontSize: 20, fontFace: 'Arial', color: '1E293B', bold: true
+      });
+
+      const stakeholders = roadmap.stakeholderChecklist || [];
+      const stakeRows = [
+        [
+          { text: 'Role / Designation', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } },
+          { text: 'Involvement Stage', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } },
+          { text: 'Purpose of Engagement', options: { fill: '1A56CC', color: 'FFFFFF', bold: true } }
+        ]
+      ];
+
+      stakeholders.forEach(s => {
+        stakeRows.push([
+          { text: s.role || '', options: { bold: true } },
+          s.involvement || 'Ongoing',
+          s.reason || ''
+        ]);
+      });
+
+      if (stakeRows.length > 1) {
+        stakeSlide.addTable(stakeRows, {
+          x: 0.4, y: 1.5, w: 12.5,
+          border: { pt: 0.5, color: 'E2E8F0' },
+          fontSize: 10,
+          autoPage: true,
+          colW: [3.5, 2.5, 6.5]
+        });
+      }
+    });
+
+    pptx.writeFile({ fileName: `Finivis_AI_Strategy_${clientName || 'Export'}_${Date.now()}.pptx` });
   };
 
   const isAI = scoringMode === 'ai';
@@ -299,6 +629,13 @@ export default function Dashboard({
               >
                 <FileSpreadsheet size={14} /> EXCEL
               </button>
+              <button 
+                onClick={exportPPT} 
+                className="flex items-center gap-2 px-3 py-1.5 text-gray-600 hover:text-orange-600 hover:bg-white rounded-lg transition-all text-[11px] font-bold"
+                title="Export as PowerPoint"
+              >
+                <Layout size={14} /> PPT
+              </button>
             </div>
           </div>
         </div>
@@ -399,8 +736,8 @@ export default function Dashboard({
           <h3 className="text-xl font-bold text-finivis-dark mb-2">AI Opportunity Quadrant</h3>
           <p className="text-sm text-gray-500 mb-1">Top Right = Highest Value & Easiest to Implement</p>
           <p className="text-xs text-gray-400 mb-4">Bubble size = Data Readiness &bull; Color = Risk Level (green=low, red=high)</p>
-          <div className="aspect-video max-h-[500px] w-full">
-            <Bubble data={chartData} options={chartOptions} />
+          <div className="h-[450px]">
+            <Bubble ref={chartRef} data={chartData} options={chartOptions} />
           </div>
         </div>
 
