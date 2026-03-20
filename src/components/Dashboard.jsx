@@ -306,11 +306,11 @@ export default function Dashboard({
       title: 'MASTER_SLIDE',
       background: { color: 'FFFFFF' },
       objects: [
-        // Logo at Top-Right
-        { image: { x: 11.4, y: 0.2, w: 1.5, h: 0.5, path: '/logo.png' } },
+        // Logo at Top-Right with fixed aspect ratio
+        { image: { x: 11.5, y: 0.2, w: 1.2, h: 0.8, path: '/logo.png', sizing: { type: 'contain' } } },
         // Footer: Center
         { text: { text: "Private & Confidential", options: { x: 0, y: 7.1, w: '100%', align: 'center', fontSize: 10, color: '94A3B8', fontFace: 'Arial' } } },
-        // Footer: Page Number (Handled by pptxgen logic or manual)
+        // Footer: Page Number
         { text: { text: "Page ", options: { x: 12.2, y: 7.1, w: 0.6, align: 'right', fontSize: 10, color: '94A3B8' } } }
       ]
     });
@@ -338,9 +338,8 @@ export default function Dashboard({
     // 2. Evaluation Table Slide
     const tableSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     tableSlide.addText("EVALUATION DASHBOARD", {
-      x: 0.4, y: 0.3, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
     });
-    // Add slide number to master or manually
     tableSlide.addText("2", { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
 
     const rows = [
@@ -378,7 +377,7 @@ export default function Dashboard({
     // 3. AI Opportunity Quadrant Slide
     const chartSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     chartSlide.addText("AI OPPORTUNITY QUADRANT", {
-      x: 0.4, y: 0.3, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
     });
     chartSlide.addText("3", { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
 
@@ -386,7 +385,8 @@ export default function Dashboard({
       const chartBase64 = chartRef.current.toBase64Image();
       chartSlide.addImage({
         data: chartBase64,
-        x: 1, y: 1.2, w: 11, h: 5.5
+        x: 1, y: 1.3, w: 11.3, h: 5.4,
+        sizing: { type: 'contain' }
       });
     } else {
       chartSlide.addText("Chart visual not available for export.", {
@@ -406,47 +406,54 @@ export default function Dashboard({
       // --- SLIDE A: CRITICAL CHALLENGE MATRIX ---
       const matrixSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       matrixSlide.addText(oppName, {
-        x: 0.4, y: 0.2, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
       });
       matrixSlide.addText("Critical Challenge Matrix", {
-        x: 0.4, y: 0.7, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
       matrixSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
 
       const challenges = opp.challenges || {};
-      const matrixRows = [
-        [
-          { text: "DATA CHALLENGES", options: { fill: 'F8FAFC', color: '475569', bold: true, align: 'center' } },
-          { text: "PROCESS CHALLENGES", options: { fill: 'F8FAFC', color: '475569', bold: true, align: 'center' } }
-        ],
-        [
-          { text: (challenges.data || []).join('\n') || 'No critical data challenges identified', options: { fontSize: 11, valign: 'top', color: '475569' } },
-          { text: (challenges.process || []).join('\n') || 'No critical process challenges identified', options: { fontSize: 11, valign: 'top', color: '475569' } }
-        ],
-        [
-          { text: "VALUE REALIZATION", options: { fill: 'F8FAFC', color: '1E293B', bold: true, align: 'center' } },
-          { text: "FEASIBILITY & TECH", options: { fill: 'F8FAFC', color: '475569', bold: true, align: 'center' } }
-        ],
-        [
-          { text: (challenges.value || []).join('\n') || 'No critical value challenges identified', options: { fontSize: 11, valign: 'top', color: '475569' } },
-          { text: (challenges.feasibility || []).join('\n') || 'No technical feasibility constraints noted', options: { fontSize: 11, valign: 'top', color: '475569' } }
-        ]
+      const cardConfigs = [
+        { title: "DATA PIPELINE", challenges: challenges.data, icon: '⛃', x: 0.4, insight: roadmap.dataInsight || opp.ai_insight },
+        { title: "VALUE REALIZATION", challenges: challenges.value, icon: '📈', x: 4.6, insight: roadmap.valueInsight },
+        { title: "IMPLEMENTATION FEASIBILITY", challenges: (challenges.feasibility || []).concat(challenges.process || []), icon: '⚡', x: 8.8, insight: roadmap.feasibilityInsight }
       ];
 
-      matrixSlide.addTable(matrixRows, {
-        x: 0.4, y: 1.3, w: 12.5, h: 5.2,
-        border: { pt: 0.5, color: 'CBD5E1' },
-        colW: [6.25, 6.25],
-        valign: 'middle'
+      cardConfigs.forEach(conf => {
+        // Card Background
+        matrixSlide.addShape(pptx.ShapeType.roundRect, {
+          x: conf.x, y: 1.5, w: 4.1, h: 5.2,
+          fill: { color: 'F8FAFC' },
+          border: { type: 'solid', color: 'E2E8F0', pt: 0.5 },
+          rectRadius: 0.1
+        });
+        // Header
+        matrixSlide.addText(`${conf.icon}  ${conf.title}`, {
+          x: conf.x + 0.2, y: 1.7, w: 3.7, fontSize: 13, bold: true, color: '1E293B'
+        });
+        // Challenges
+        const bulletTxt = (conf.challenges || []).length > 0 
+          ? conf.challenges.map(c => `• ${c}`).join('\n')
+          : "Standard discovery ongoing";
+        matrixSlide.addText(bulletTxt, {
+          x: conf.x + 0.2, y: 2.1, w: 3.7, h: 4.0, fontSize: 10, color: '475569', valign: 'top', breakLine: true
+        });
+        // Footer AI Insight
+        if (conf.insight) {
+          matrixSlide.addText(`AI Insight: ${conf.insight}`, {
+            x: conf.x + 0.2, y: 6.3, w: 3.7, fontSize: 9, color: '64748B', italic: true
+          });
+        }
       });
 
       // --- SLIDE B: STEP-BY-STEP READINESS SCHEDULE ---
       const scheduleSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       scheduleSlide.addText(oppName, {
-        x: 0.4, y: 0.2, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
       });
       scheduleSlide.addText("Step-By-Step Readiness Schedule", {
-        x: 0.4, y: 0.7, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
       scheduleSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
 
@@ -487,10 +494,10 @@ export default function Dashboard({
       // --- SLIDE C: DOCUMENTS REQUIRED FROM CLIENT ---
       const docsSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       docsSlide.addText(oppName, {
-        x: 0.4, y: 0.2, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
       });
       docsSlide.addText("Documents Required From Client", {
-        x: 0.4, y: 0.7, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
       docsSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
 
@@ -524,10 +531,10 @@ export default function Dashboard({
       // --- SLIDE D: STAKEHOLDER CHECKLIST ---
       const stakeSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       stakeSlide.addText(oppName, {
-        x: 0.4, y: 0.2, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
+        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: false
       });
       stakeSlide.addText("Stakeholder Checklist", {
-        x: 0.4, y: 0.7, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
       });
       stakeSlide.addText(String(slideCounter++), { x: 12.8, y: 7.1, fontSize: 10, color: '94A3B8' });
 
