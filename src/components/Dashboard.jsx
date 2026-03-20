@@ -332,7 +332,7 @@ export default function Dashboard({
     // 2. Evaluation Table Slide
     const tableSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     tableSlide.addText("EVALUATION DASHBOARD", {
-      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
     });
     tableSlide.addText("Page 2", { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
@@ -358,7 +358,7 @@ export default function Dashboard({
     });
 
     tableSlide.addTable(rows, {
-      x: 0.4, y: 1.2, w: 12.5,
+      x: 0.4, y: 1.4, w: 12.5,
       border: { pt: 1, color: 'E2E8F0' },
       fill: { color: 'FFFFFF' },
       fontSize: 10,
@@ -371,16 +371,29 @@ export default function Dashboard({
     // 3. AI Opportunity Quadrant Slide
     const chartSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
     chartSlide.addText("AI OPPORTUNITY QUADRANT", {
-      x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+      x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
     });
     chartSlide.addText("Page 3", { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
     if (chartRef.current) {
       const chartBase64 = chartRef.current.toBase64Image();
+      const canvas = chartRef.current.canvas;
+      const aspectRatio = canvas.width / canvas.height;
+      const maxW = 11.3;
+      const maxH = 5.2;
+      let imgW, imgH;
+      if (maxW / maxH > aspectRatio) {
+        imgH = maxH;
+        imgW = imgH * aspectRatio;
+      } else {
+        imgW = maxW;
+        imgH = imgW / aspectRatio;
+      }
+      const imgX = 1 + (maxW - imgW) / 2;
+      const imgY = 1.5 + (maxH - imgH) / 2;
       chartSlide.addImage({
         data: chartBase64,
-        x: 1, y: 1.3, w: 11.3, h: 5.4,
-        sizing: { type: 'contain' }
+        x: imgX, y: imgY, w: imgW, h: imgH
       });
     } else {
       chartSlide.addText("Chart visual not available for export.", {
@@ -396,7 +409,7 @@ export default function Dashboard({
     if (approvedOpps.length === 0) {
       const noOppSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
       noOppSlide.addText("OPPORTUNITY DEEP-DIVE", {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
       });
       noOppSlide.addText("All evaluated opportunities are currently in discovery phase. No approved opportunities are available for detailed analysis at this time.", {
         x: 1.5, y: 3, w: 10, align: 'center', fontSize: 14, fontFace: 'Arial', color: '64748B'
@@ -410,11 +423,11 @@ export default function Dashboard({
 
       // --- SLIDE A: CRITICAL CHALLENGE MATRIX ---
       const matrixSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-      matrixSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+      matrixSlide.addText("CRITICAL CHALLENGE MATRIX", {
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
       });
-      matrixSlide.addText("Critical Challenge Matrix", {
-        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+      matrixSlide.addText(oppName, {
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
       });
       matrixSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
@@ -425,40 +438,61 @@ export default function Dashboard({
         { title: "IMPLEMENTATION FEASIBILITY", challenges: (challenges.feasibility || []).concat(challenges.process || []), icon: '▶', x: 8.8, insight: roadmap.feasibilityInsight }
       ];
 
+      // Calculate auto-height: estimate lines per card, use tallest
+      const charsPerLine = 38;
+      const lineH = 0.18;
+      const headerH = 0.5;
+      const insightH = 0.5;
+      const cardPadding = 0.6;
+
+      const cardContentLines = cardConfigs.map(conf => {
+        const items = conf.challenges || [];
+        if (items.length === 0) return 1;
+        return items.reduce((total, c) => total + Math.ceil((`• ${c}`).length / charsPerLine), 0);
+      });
+      const maxLines = Math.max(...cardContentLines, 3);
+      const calcH = Math.min(Math.max(headerH + (maxLines * lineH) + insightH + cardPadding, 2.5), 5.0);
+
+      // Available vertical space: from 1.6 (after title+subtitle) to 6.8 (before footer)
+      const availTop = 1.6;
+      const availBottom = 6.8;
+      const cardY = availTop + ((availBottom - availTop) - calcH) / 2;
+
       cardConfigs.forEach(conf => {
         // Card Background
         matrixSlide.addShape(pptx.ShapeType.roundRect, {
-          x: conf.x, y: 1.5, w: 4.1, h: 5.2,
+          x: conf.x, y: cardY, w: 4.1, h: calcH,
           fill: { color: 'F8FAFC' },
           border: { type: 'solid', color: 'E2E8F0', pt: 0.5 },
           rectRadius: 0.1
         });
         // Header
         matrixSlide.addText(`${conf.icon}  ${conf.title}`, {
-          x: conf.x + 0.2, y: 1.7, w: 3.7, fontSize: 13, bold: true, color: '1E293B', fontFace: 'Arial'
+          x: conf.x + 0.2, y: cardY + 0.2, w: 3.7, fontSize: 13, bold: true, color: '1E293B', fontFace: 'Arial'
         });
         // Challenges
         const bulletTxt = (conf.challenges || []).length > 0
           ? conf.challenges.map(c => `• ${c}`).join('\n')
           : "Standard discovery ongoing";
+        const bulletH = calcH - headerH - insightH - cardPadding + 0.1;
         matrixSlide.addText(bulletTxt, {
-          x: conf.x + 0.2, y: 2.1, w: 3.7, h: 3.4, fontSize: 10, color: '475569', valign: 'top', breakLine: true, fontFace: 'Arial'
+          x: conf.x + 0.2, y: cardY + 0.6, w: 3.7, h: bulletH, fontSize: 10, color: '475569', valign: 'top', breakLine: true, fontFace: 'Arial'
         });
         // Footer AI Insight
         if (conf.insight) {
           matrixSlide.addText(`AI Insight: ${conf.insight}`, {
-            x: conf.x + 0.2, y: 5.7, w: 3.7, fontSize: 9, color: '64748B', italic: true, fontFace: 'Arial'
+            x: conf.x + 0.2, y: cardY + calcH - 0.5, w: 3.7, fontSize: 9, color: '64748B', italic: true, fontFace: 'Arial'
           });
         }
       });
 
       // --- SLIDE B: STEP-BY-STEP READINESS SCHEDULE ---
       const scheduleSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-      scheduleSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+      scheduleSlide.addText("STEP-BY-STEP READINESS SCHEDULE", {
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
       });
-      scheduleSlide.addText("Step-By-Step Readiness Schedule", {
-        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+      scheduleSlide.addText(oppName, {
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
       });
       scheduleSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
@@ -483,7 +517,7 @@ export default function Dashboard({
 
       if (scheduleRows.length > 1) {
         scheduleSlide.addTable(scheduleRows, {
-          x: 0.4, y: 1.3, w: 12.5,
+          x: 0.4, y: 1.6, w: 12.5,
           border: { pt: 0.5, color: 'E2E8F0' },
           fontSize: 10,
           fontFace: 'Arial',
@@ -503,11 +537,11 @@ export default function Dashboard({
 
       // --- SLIDE C: DOCUMENTS REQUIRED FROM CLIENT ---
       const docsSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-      docsSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+      docsSlide.addText("DOCUMENTS REQUIRED FROM CLIENT", {
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
       });
-      docsSlide.addText("Documents Required From Client", {
-        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+      docsSlide.addText(oppName, {
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
       });
       docsSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
@@ -530,7 +564,7 @@ export default function Dashboard({
 
       if (docRows.length > 1) {
         docsSlide.addTable(docRows, {
-          x: 0.4, y: 1.3, w: 12.5,
+          x: 0.4, y: 1.6, w: 12.5,
           border: { pt: 0.5, color: 'E2E8F0' },
           fontSize: 10,
           fontFace: 'Arial',
@@ -545,11 +579,11 @@ export default function Dashboard({
 
       // --- SLIDE D: STAKEHOLDER CHECKLIST ---
       const stakeSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-      stakeSlide.addText(oppName, {
-        x: 0.4, y: 0.4, w: '90%', fontSize: 32, fontFace: 'Arial', color: '1E293B', bold: true
+      stakeSlide.addText("STAKEHOLDER CHECKLIST", {
+        x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: '1E293B', bold: true
       });
-      stakeSlide.addText("Stakeholder Checklist", {
-        x: 0.4, y: 0.9, w: '90%', fontSize: 14, fontFace: 'Arial', color: '64748B', italic: true
+      stakeSlide.addText(oppName, {
+        x: 0.5, y: 1.1, w: '80%', fontSize: 13, fontFace: 'Arial', color: '64748B', italic: true
       });
       stakeSlide.addText(`Page ${slideCounter++}`, { x: 12.0, y: 7.1, w: 1.2, align: 'right', fontSize: 10, color: '94A3B8', fontFace: 'Arial' });
 
@@ -572,7 +606,7 @@ export default function Dashboard({
 
       if (stakeRows.length > 1) {
         stakeSlide.addTable(stakeRows, {
-          x: 0.4, y: 1.3, w: 12.5,
+          x: 0.4, y: 1.6, w: 12.5,
           border: { pt: 0.5, color: 'E2E8F0' },
           fontSize: 10,
           fontFace: 'Arial',
