@@ -193,22 +193,18 @@ export default function Dashboard({
       datalabels: {
         anchor: (context) => {
           const item = context.dataset.data[context.dataIndex];
-          return item.y > 90 ? 'start' : 'end';
+          return item.x > 85 ? 'start' : 'end';
         },
         align: (context) => {
           const item = context.dataset.data[context.dataIndex];
-          if (item.y > 90) return 'bottom';
-          if (item.x > 90) return 'left';
-          if (item.x < 10) return 'right';
-          return 'top';
+          return item.x > 85 ? 'left' : 'right';
         },
-        offset: 8,
+        offset: 12,
         display: 'auto', 
         clamp: true,
         formatter: (value, context) => {
           const item = context.dataset.data[context.dataIndex];
-          // Only show labels for bubbles with some score or significant size
-          return item.name.length > 20 ? item.name.substring(0, 20) + '...' : item.name;
+          return item.name;
         },
         font: {
           family: 'Inter',
