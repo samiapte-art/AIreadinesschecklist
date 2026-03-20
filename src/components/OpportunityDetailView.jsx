@@ -66,15 +66,6 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [evaluatedOpp.opportunityName, evaluatedOpp.name, clientName]);
 
-  // Lock body scroll when overlay is open to prevent "double scrollbar"
-  useEffect(() => {
-    const originalStyle = window.getComputedStyle(document.body).overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = originalStyle;
-    };
-  }, []);
-
   const { priority, challenges, tags, decision, missingFields } = evaluatedOpp;
 
   const isNotConsidered = decision?.verdict === 'Not Considered';
@@ -110,7 +101,7 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#F5F7FA] overflow-y-auto animate-fade-in">
+    <div className="bg-[#F5F7FA] min-h-screen animate-fade-in pb-20">
       {/* Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10 flex items-center justify-between">
         <button

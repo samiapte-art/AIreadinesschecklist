@@ -76,11 +76,6 @@ export default function Dashboard({
     }));
   }, [opportunities, aiEvaluations, scoringMode]);
 
-  // Derive the active opportunity from results to ensure it stays in sync with parent updates
-  const activeOpp = useMemo(() =>
-    selectedOppIndex !== null ? results[selectedOppIndex] : null,
-    [results, selectedOppIndex]);
-
   // Bubble chart: X=feasibility, Y=value, radius=dataReadiness, color=risk
   const chartData = {
     datasets: [
@@ -206,6 +201,17 @@ export default function Dashboard({
   };
 
   const isAI = scoringMode === 'ai';
+
+  if (selectedOppIndex !== null) {
+    return (
+      <OpportunityDetailView
+        evaluatedOpp={results[selectedOppIndex]}
+        onClose={() => setSelectedOppIndex(null)}
+        onSaveRoadmap={(data, updatedOpp) => onUpdateOpportunity(results[selectedOppIndex].originalIndex, data, updatedOpp)}
+        clientName={clientName}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8 animate-fade-in fade-in-up">
@@ -433,15 +439,7 @@ export default function Dashboard({
         </div>
       </div>
 
-      {/* Detail Overlay */}
-      {activeOpp && (
-        <OpportunityDetailView
-          evaluatedOpp={activeOpp}
-          clientName={processName?.split(' - ')[0] || 'Client'}
-          onClose={() => setSelectedOppIndex(null)}
-          onSaveRoadmap={(data, updatedOpp) => onUpdateOpportunity(selectedOppIndex, data, updatedOpp)}
-        />
-      )}
+      {/* Detail View removed from here as it is now at the top-level return */}
     </div>
   );
 }
