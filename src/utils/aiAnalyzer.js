@@ -248,6 +248,33 @@ confidence: Calculate automation confidence as integer 0-100 based on average of
 
 tags: Generate applicable tags from: "Quick Win", "Strategic Initiative", "High ROI", "Data Improvement Needed", "AI Ready", "Evaluate Further", "Process Redesign Required", "High Risk"
 
+decision: {
+  "verdict": "Approved" or "Not Considered",
+  "reasoning": "2-3 sentence explanation of why this decision was made, referencing specific scores and checklist inputs",
+  "criteriaChecklist": [
+    { "criterion": "Data Readiness", "met": true/false, "detail": "explanation" },
+    { "criterion": "Business Value", "met": true/false, "detail": "explanation" },
+    { "criterion": "Technical Feasibility", "met": true/false, "detail": "explanation" },
+    { "criterion": "Risk Tolerance", "met": true/false, "detail": "explanation" },
+    { "criterion": "Process Maturity", "met": true/false, "detail": "explanation" }
+  ]
+}
+Rules for decision:
+- Overall score >= 55 → "Approved"
+- Overall score < 55 → "Not Considered"
+- For "Not Considered": reasoning MUST reference specific checklist inputs that led to the low score
+- For "Approved": reasoning should highlight strengths and note any conditions
+
+alternativeRecommendation: If a better, more efficient, or more scalable solution approach exists for what the client is trying to achieve, include:
+{
+  "approach": "Description of the alternative approach",
+  "rationale": "Why it is a stronger fit",
+  "relationship": "replaces" or "complements"
+}
+If no alternative exists, set to null.
+
+missingFields: Array of { "field": "field_name", "impact": "how this missing data affects the evaluation" } for any checklist fields that were empty or not provided. If all fields are filled, return empty array.
+
 ═══════════════════════════════════════════
 8. PORTFOLIO-LEVEL NARRATIVE
 ═══════════════════════════════════════════
@@ -259,6 +286,13 @@ In addition to per-opportunity evaluation, generate:
 - scopeOfWork: Professional engagement SOW with phases, deliverables, assumptions, outOfScope, acceptanceCriteria
 - draftEmail: { subject, body } — professional email to client (use \\n for line breaks)
 - internalNextSteps: Array of consultant action items
+- notConsideredSummary: If ANY opportunities were marked "Not Considered", generate:
+  {
+    "count": number of not-considered opportunities,
+    "overallReason": "Brief synthesis of why these opportunities didn't qualify",
+    "pathToReconsideration": "What the client could change or improve to make these viable"
+  }
+  If all opportunities are approved, set to null.
 
 ═══════════════════════════════════════════
 OUTPUT FORMAT
@@ -312,7 +346,20 @@ Return a single JSON object with this EXACT structure:
       "confidence": <integer 0-100>,
       "tags": ["string", ...],
       "automationType": "string",
-      "roiTimeline": "string"
+      "roiTimeline": "string",
+      "decision": {
+        "verdict": "Approved|Not Considered",
+        "reasoning": "string",
+        "criteriaChecklist": [
+          { "criterion": "string", "met": true, "detail": "string" }
+        ]
+      },
+      "alternativeRecommendation": {
+        "approach": "string",
+        "rationale": "string",
+        "relationship": "replaces|complements"
+      },
+      "missingFields": [{ "field": "string", "impact": "string" }]
     }
   ],
   "executiveSummary": "string",
@@ -322,6 +369,11 @@ Return a single JSON object with this EXACT structure:
   },
   "riskProfile": "string",
   "suggestedTechStack": ["string", ...],
+  "notConsideredSummary": {
+    "count": 0,
+    "overallReason": "string",
+    "pathToReconsideration": "string"
+  },
   "scopeOfWork": {
     "title": "string",
     "duration": "string",
@@ -453,40 +505,214 @@ Respond ONLY with a valid JSON object matching exactly this structure, with no m
 };
 
 /**
- * Generate a detailed pre-automation readiness schedule for the client.
+ * ═══════════════════════════════════════════════════════════════
+ * DEDICATED PROMPT CHAIN — Quality-First Approach
+ * ═══════════════════════════════════════════════════════════════
+ * Instead of one monolithic prompt, we use 3 focused prompts:
+ *   1. getDocumentChecklist() — Exact documents needed from client
+ *   2. getClientReadinessTasks() — Pre-automation prep + requirements
+ *   3. getKickoffReadiness() — Blockers, outstanding items, timeline
+ * Each prompt is laser-focused on its specific job for maximum quality.
+ * ═══════════════════════════════════════════════════════════════
  */
-export const getOpportunityPreReqs = async (evaluatedOpp, clientName) => {
+
+/**
+ * PROMPT 1: Document Checklist
+ * Generates an exact, opportunity-specific list of documents needed from the client.
+ * This prompt is deliberately narrow — it ONLY thinks about documents.
+ */
+export const getDocumentChecklist = async (evaluatedOpp, clientName) => {
   if (!openai) throw new Error("OpenAI API Key is missing.");
 
-  const promptStr = `
-You are a Senior AI Implementation Consultant at Finivis.
-Provide a detailed "Pre-Automation Readiness Schedule" for this specific AI opportunity:
-${JSON.stringify(evaluatedOpp, null, 2)}
+  const prompt = `
+You are a Senior AI Implementation Consultant at Finivis, preparing for a new automation project.
+You are about to kick off this project and need to create a COMPREHENSIVE document request list for the client.
+
+═══════════════════════════════════════════
+YOUR SINGLE JOB: List every EXACT document you need from the client.
+═══════════════════════════════════════════
 
 Client: ${clientName}
+Opportunity: ${evaluatedOpp.opportunityName || evaluatedOpp.name}
+Description: ${evaluatedOpp.description || 'N/A'}
+Pain Points: ${JSON.stringify(evaluatedOpp.painPoints || [])}
+Systems Involved: ${evaluatedOpp.systems || 'N/A'}
+Current Data Availability: ${evaluatedOpp.dataAvailability || 'N/A'}
+Process Maturity: ${evaluatedOpp.maturity || 'N/A'}
+Desired Future State: ${evaluatedOpp.futureState || 'N/A'}
+KPI: ${evaluatedOpp.kpi || 'N/A'}
+AI Components Planned: ${JSON.stringify(evaluatedOpp.scope?.aiComponents || [])}
+Architecture Stack: ${JSON.stringify(evaluatedOpp.scope?.architectureStack || {})}
 
-The goal is to list exactly what the CLIENT must do and prepare BEFORE Finivis starts the automation build.
+Think step by step:
+1. What does the AI model need to LEARN from? → Sample data files
+2. What reference data does the system need to LOOK UP? → Catalogs, price lists, master data
+3. What TEMPLATES does the client currently use that we need to replicate? → Output templates
+4. What BUSINESS RULES govern this process? → Decision criteria, approval thresholds, exception rules
+5. What PROCESS documentation exists? → SOPs, workflow diagrams, training materials
+6. What HISTORICAL OUTPUT can we use as ground truth? → Past completed work samples
+7. What COMPLIANCE or regulatory requirements apply? → Industry standards, legal requirements
+8. What SYSTEM documentation do we need? → API docs, database schemas, export guides
+9. What STAKEHOLDER information is needed? → Org charts, RACI matrices, contact lists
+
+For EACH document, provide:
+- The EXACT name a consultant would use when requesting it from the client
+- The expected file format
+- The category it belongs to
+- WHY specifically this document is needed for THIS project (not generic reasons)
+- What the document should contain
+- How many/how much is needed
+- Priority level
+
+DO NOT generate generic documents like "Process Documentation" or "Data Files".
+Instead be SPECIFIC: "Invoice Processing SOP with Exception Handling Rules" or "SAP Purchase Order Export (last 12 months, CSV format)"
 
 Respond ONLY with a JSON object:
 {
-  "scheduleTitle": "e.g. Data & Process Readiness Roadmap",
-  "clientExecutiveSummary": "1-2 sentence overview of why these steps are critical for success.",
+  "documentChecklist": [
+    {
+      "documentName": "Exact name of the document",
+      "format": "PDF/Excel/CSV/DWG/etc.",
+      "category": "Sample Data|Reference Data|Business Logic|Process Documentation|Historical Output|Compliance|System Documentation|Stakeholder Info",
+      "reason": "Specific reason why THIS document is needed for THIS project",
+      "exampleDescription": "What this document should contain — be specific",
+      "quantity": "e.g. 10-20 samples, or 12 months of history, or 1 master document",
+      "priority": "Critical|High|Medium"
+    }
+  ]
+}
+
+Generate at least 8-15 documents. Be thorough — missing a critical document at project start causes delays.
+`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are an expert AI implementation consultant. Your ONLY job is to produce an exhaustive, opportunity-specific document checklist. Every document name must be specific enough that a client admin could search for it and find it. Output pure JSON." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(completion.choices[0].message.content);
+  } catch (err) {
+    console.error("Failed to generate document checklist:", err);
+    throw err;
+  }
+};
+
+/**
+ * PROMPT 2: Client Readiness Tasks & Requirements
+ * Generates pre-automation preparation tasks, data requirements, access requirements,
+ * and stakeholder checklist. Receives scope phases to avoid duplication.
+ */
+export const getClientReadinessTasks = async (evaluatedOpp, clientName, scopePhases = []) => {
+  if (!openai) throw new Error("OpenAI API Key is missing.");
+
+  const isNotConsidered = evaluatedOpp.decision?.verdict === 'Not Considered';
+
+  const scopeDedup = scopePhases.length > 0 ? `
+═══════════════════════════════════════════
+CRITICAL — DUPLICATION PREVENTION
+═══════════════════════════════════════════
+These IMPLEMENTATION PHASES have already been planned. DO NOT repeat any of them as pre-automation tasks:
+${scopePhases.map((p, i) => `  ${i + 1}. ${p.title || p.phase || p.name}: ${p.desc || p.description || ''}`).join('\n')}
+
+Your tasks must be CLIENT-SIDE PREPARATION that happens BEFORE implementation begins.
+Examples of valid pre-automation tasks: collecting data samples, provisioning system access,
+identifying stakeholders, documenting business rules, cleaning existing data.
+Examples of INVALID tasks (duplicated from scope): building AI models, system integration,
+process documentation as a deliverable, deploying solutions.
+═══════════════════════════════════════════` : '';
+
+  const prompt = isNotConsidered ? `
+You are a Senior AI Implementation Consultant at Finivis.
+This opportunity was evaluated as "Not Considered" (score: ${evaluatedOpp.scores?.overall || 'N/A'}%).
+
+Client: ${clientName}
+Opportunity: ${evaluatedOpp.opportunityName || evaluatedOpp.name}
+Description: ${evaluatedOpp.description || 'N/A'}
+Scores: ${JSON.stringify(evaluatedOpp.scores || {})}
+Challenges: ${JSON.stringify(evaluatedOpp.challenges || {})}
+Decision: ${JSON.stringify(evaluatedOpp.decision || {})}
+
+Generate a formal, professional response explaining why this opportunity is not being pursued,
+and what the client could do to make it viable in the future.
+
+Respond ONLY with a JSON object:
+{
+  "scheduleTitle": "Opportunity Assessment Summary",
+  "clientExecutiveSummary": "1-2 sentence professional explanation of why this opportunity is not being pursued at this time.",
+  "notConsideredDetails": {
+    "formalJustification": "3-4 sentence professional, respectful explanation referencing specific checklist inputs and scores. Do not be dismissive — frame it as 'not yet ready' rather than 'rejected'.",
+    "specificFailures": [
+      { "area": "e.g. Data Readiness", "issue": "specific issue found", "checklistInput": "the actual client input that caused this" }
+    ],
+    "pathToReconsideration": [
+      { "condition": "What needs to change", "description": "Detailed explanation of what the client should do", "priority": "Critical|High|Medium" }
+    ],
+    "scaledDownAlternative": "If a smaller version of this opportunity could work, describe it. Otherwise null."
+  }
+}
+` : `
+You are a Senior AI Implementation Consultant at Finivis, planning the pre-automation readiness phase.
+
+═══════════════════════════════════════════
+YOUR SINGLE JOB: List what the CLIENT must prepare before Finivis starts building.
+═══════════════════════════════════════════
+
+Client: ${clientName}
+Opportunity: ${evaluatedOpp.opportunityName || evaluatedOpp.name}
+Description: ${evaluatedOpp.description || 'N/A'}
+Systems Involved: ${evaluatedOpp.systems || 'N/A'}
+Current Data Availability: ${evaluatedOpp.dataAvailability || 'N/A'}
+Process Maturity: ${evaluatedOpp.maturity || 'N/A'}
+Pain Points: ${JSON.stringify(evaluatedOpp.painPoints || [])}
+Challenges Identified: ${JSON.stringify(evaluatedOpp.challenges || {})}
+KPI: ${evaluatedOpp.kpi || 'N/A'}
+${scopeDedup}
+
+Generate:
+1. "preAutomationTasks" — Specific client-side preparation activities (NOT implementation work)
+2. "dataRequirements" — Exact datasets/data access needed, with specific quantities and reasons
+3. "accessRequirements" — System access, API keys, environments needed, with reasons
+4. "stakeholderChecklist" — Specific roles and people who need to be identified/involved
+
+Every item must reference THIS specific opportunity. No generic filler.
+
+Respond ONLY with a JSON object:
+{
+  "scheduleTitle": "e.g. Pre-Automation Readiness Plan for [Opportunity Name]",
+  "clientExecutiveSummary": "1-2 sentence overview of why these preparation steps are critical for THIS project.",
   "preAutomationTasks": [
-    { 
-      "task": "e.g. Centralize Invoice PDFs", 
-      "owner": "e.g. Finance IT Team", 
-      "importance": "Critical",
-      "description": "Why this is needed and what the ideal state looks like." 
-    },
-    { "task": "...", "owner": "...", "importance": "...", "description": "..." }
+    {
+      "task": "Specific client-side action — NOT an implementation phase",
+      "owner": "Specific team or role at the client",
+      "importance": "Critical|High|Medium",
+      "description": "Why this is needed for THIS project and what the ideal state looks like"
+    }
   ],
   "dataRequirements": [
-     "Specific dataset 1 (e.g. 500+ historical invoices)",
-     "Specific access 2 (e.g. Read-only API access to ERP)"
+    {
+      "item": "Specific dataset with quantity (e.g. '12 months of SAP purchase order exports')",
+      "reason": "Why THIS data is specifically needed for the AI solution being built",
+      "priority": "Critical|High|Medium"
+    }
+  ],
+  "accessRequirements": [
+    {
+      "item": "Specific system access (e.g. 'Read-only SAP RFC/BAPI access to MM module')",
+      "reason": "Why this access is needed and what it will be used for",
+      "priority": "Critical|High|Medium"
+    }
   ],
   "stakeholderChecklist": [
-     "Identify Business Process Owner",
-     "Assign technical point of contact"
+    {
+      "role": "Specific role (e.g. 'AP Team Lead')",
+      "reason": "Why this person is needed (e.g. 'Knows all exception handling rules for 3-way matching')",
+      "involvement": "Discovery|Ongoing|Sign-off"
+    }
   ]
 }
 `;
@@ -495,15 +721,146 @@ Respond ONLY with a JSON object:
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
-        { role: "system", content: "You are an AI Implementation Expert. Output pure JSON." },
-        { role: "user", content: promptStr }
+        { role: "system", content: `You are an AI implementation expert focused ONLY on client preparation. ${isNotConsidered ? 'Generate a professional Not Considered assessment.' : 'Every task and requirement must be specific to this exact opportunity — no generic items. Pre-automation tasks are CLIENT preparation, NOT implementation work.'} Output pure JSON.` },
+        { role: "user", content: prompt }
       ],
       response_format: { type: "json_object" }
     });
 
     return JSON.parse(completion.choices[0].message.content);
   } catch (err) {
-    console.error("Failed to generate readiness schedule:", err);
+    console.error("Failed to generate readiness tasks:", err);
     throw err;
   }
+};
+
+/**
+ * PROMPT 3: Kickoff Readiness Assessment
+ * Synthesizes outputs from Prompt 1 & 2 to generate the final kickoff readiness report:
+ * outstanding items, internal actions, blockers, and timeline.
+ */
+export const getKickoffReadiness = async (evaluatedOpp, clientName, documentChecklist, readinessTasks) => {
+  if (!openai) throw new Error("OpenAI API Key is missing.");
+
+  const prompt = `
+You are a Senior AI Project Manager at Finivis, conducting a kickoff readiness assessment.
+You have already gathered the document requirements and client preparation tasks.
+Now synthesize everything into a final kickoff readiness report.
+
+═══════════════════════════════════════════
+YOUR SINGLE JOB: Assess kickoff readiness and identify what's still outstanding.
+═══════════════════════════════════════════
+
+Client: ${clientName}
+Opportunity: ${evaluatedOpp.opportunityName || evaluatedOpp.name}
+Description: ${evaluatedOpp.description || 'N/A'}
+Overall Score: ${evaluatedOpp.scores?.overall || 'N/A'}%
+Decision: ${evaluatedOpp.decision?.verdict || 'N/A'}
+Challenges: ${JSON.stringify(evaluatedOpp.challenges || {})}
+
+Documents Required (${documentChecklist?.length || 0} items):
+${(documentChecklist || []).map((d, i) => `  ${i + 1}. [${d.priority}] ${d.documentName} (${d.format})`).join('\n')}
+
+Client Preparation Tasks (${readinessTasks?.preAutomationTasks?.length || 0} items):
+${(readinessTasks?.preAutomationTasks || []).map((t, i) => `  ${i + 1}. [${t.importance}] ${t.task} — Owner: ${t.owner}`).join('\n')}
+
+Data Requirements: ${JSON.stringify(readinessTasks?.dataRequirements || [])}
+Access Requirements: ${JSON.stringify(readinessTasks?.accessRequirements || [])}
+
+Based on ALL of the above, generate a kickoff readiness assessment:
+
+1. "outstandingClientItems" — Prioritized list of what the client MUST complete before kickoff
+   (synthesize from documents + tasks + access needs)
+2. "internalActions" — What Finivis must prepare internally before kickoff
+3. "blockers" — Risks or dependencies that could delay the project
+4. "suggestedTimeline" — Realistic timeline including requirements gathering, document collection, and project start
+
+Respond ONLY with a JSON object:
+{
+  "kickoffReadiness": {
+    "readinessScore": "Low|Medium|High",
+    "readinessSummary": "1-2 sentence assessment of how ready this project is to kick off",
+    "outstandingClientItems": [
+      { "item": "Specific outstanding item", "status": "Pending", "owner": "Client team/role", "estimatedDays": 5 }
+    ],
+    "internalActions": [
+      { "item": "Specific Finivis action", "status": "Pending", "owner": "Finivis role/team", "estimatedDays": 3 }
+    ],
+    "blockers": [
+      { "blocker": "Specific risk or dependency", "severity": "High|Medium|Low", "mitigation": "How to resolve this", "impact": "What happens if not resolved" }
+    ],
+    "suggestedTimeline": "Detailed timeline (e.g. 'Weeks 1-2: Document collection and data provisioning. Week 3: Discovery workshops. Week 4: Project kickoff.')"
+  }
+}
+`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: "You are an AI project management expert. Synthesize the document requirements and readiness tasks into a comprehensive kickoff readiness assessment. Be specific about timelines and blockers. Output pure JSON." },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    });
+
+    return JSON.parse(completion.choices[0].message.content);
+  } catch (err) {
+    console.error("Failed to generate kickoff readiness:", err);
+    throw err;
+  }
+};
+
+/**
+ * ORCHESTRATOR: Runs the 3-prompt chain sequentially and merges results.
+ * This is the main entry point called by OpportunityDetailView.
+ * @param {Object} evaluatedOpp - The evaluated opportunity
+ * @param {string} clientName - Client name
+ * @param {Array} scopePhases - Implementation scope phases (for dedup)
+ * @param {Function} onProgress - Optional callback for progress updates
+ */
+export const getOpportunityPreReqs = async (evaluatedOpp, clientName, scopePhases = [], onProgress) => {
+  const isNotConsidered = evaluatedOpp.decision?.verdict === 'Not Considered';
+
+  // For Not Considered opportunities, only run the readiness tasks prompt (which handles the justification)
+  if (isNotConsidered) {
+    if (onProgress) onProgress('Generating assessment summary...');
+    const readinessResult = await getClientReadinessTasks(evaluatedOpp, clientName, scopePhases);
+    return {
+      ...readinessResult,
+      documentChecklist: [],
+      kickoffReadiness: null
+    };
+  }
+
+  // For Approved opportunities, run the full 3-prompt chain
+  // Step 1: Document Checklist
+  if (onProgress) onProgress('Analyzing required documents...');
+  const docResult = await getDocumentChecklist(evaluatedOpp, clientName);
+
+  // Step 2: Client Readiness Tasks
+  if (onProgress) onProgress('Generating preparation tasks...');
+  const readinessResult = await getClientReadinessTasks(evaluatedOpp, clientName, scopePhases);
+
+  // Step 3: Kickoff Readiness (uses outputs from 1 & 2)
+  if (onProgress) onProgress('Assessing kickoff readiness...');
+  const kickoffResult = await getKickoffReadiness(evaluatedOpp, clientName, docResult.documentChecklist, readinessResult);
+
+  // Merge all results into a single object (backward-compatible with existing UI)
+  return {
+    scheduleTitle: readinessResult.scheduleTitle || `Pre-Automation Readiness Plan for ${evaluatedOpp.opportunityName || evaluatedOpp.name}`,
+    clientExecutiveSummary: readinessResult.clientExecutiveSummary,
+    preAutomationTasks: readinessResult.preAutomationTasks || [],
+    documentChecklist: docResult.documentChecklist || [],
+    dataRequirements: readinessResult.dataRequirements || [],
+    accessRequirements: readinessResult.accessRequirements || [],
+    stakeholderChecklist: readinessResult.stakeholderChecklist || [],
+    kickoffReadiness: kickoffResult.kickoffReadiness || null,
+    // Keep documentRequirements for backward compat (map from documentChecklist)
+    documentRequirements: (docResult.documentChecklist || []).map(d => ({
+      item: `${d.documentName} (${d.format})`,
+      reason: d.reason,
+      priority: d.priority
+    }))
+  };
 };

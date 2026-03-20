@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { evaluateOpportunity } from '../utils/EvaluationEngine';
 import OpportunityDetailView from './OpportunityDetailView';
-import { Download, FileText, FileSpreadsheet, Paperclip, ChevronRight, Brain, Calculator } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, Paperclip, ChevronRight, Brain, Calculator, Layout, Sparkles, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
 import {
   Chart as ChartJS,
   LinearScale,
@@ -42,7 +42,21 @@ function getPriorityStyle(priority) {
   }
 }
 
-export default function Dashboard({ opportunities, processName, onUpdateOpportunity, aiEvaluations, scoringMode }) {
+export default function Dashboard({ 
+  opportunities, 
+  processName, 
+  onUpdateOpportunity, 
+  aiEvaluations, 
+  scoringMode,
+  clientName,
+  clientWebsite,
+  onRunDVF,
+  dvfLoading,
+  aiInsights,
+  showAiStrategist,
+  onToggleStrategist,
+  aiError
+}) {
   const [selectedOppIndex, setSelectedOppIndex] = useState(null);
 
   const results = useMemo(() => {
@@ -50,6 +64,7 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
       // Use AI-driven DVF evaluations
       return aiEvaluations.map((evalOpp, idx) => ({
         ...evalOpp,
+        persisted_roadmap: opportunities[idx]?.persisted_roadmap,
         originalIndex: idx
       }));
     }
@@ -195,23 +210,98 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
   return (
     <div className="space-y-8 animate-fade-in fade-in-up">
       <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-apple border border-gray-100">
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-3">
-            <h2 className="text-2xl font-bold text-finivis-dark">Evaluation Dashboard</h2>
-            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${isAI
-              ? 'bg-blue-50 text-blue-700 border-blue-200'
-              : 'bg-gray-50 text-gray-500 border-gray-200'
-              }`}>
-              {isAI ? <><Brain size={12} /> AI Scored</> : <><Calculator size={12} /> Estimated</>}
-            </span>
+        {/* Consolidated Client & Action Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 border-b border-gray-50 pb-8">
+          <div className="flex items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl bg-finivis-blue/10 flex items-center justify-center text-finivis-blue shrink-0 shadow-sm border border-finivis-blue/20">
+              <img src="/logo.png" alt="C" className="w-8 h-8 object-contain" onError={(e) => { e.target.parentElement.innerHTML = `<span class="text-xl font-black">${clientName?.charAt(0).toUpperCase() || 'C'}</span>` }} />
+            </div>
+            <div>
+              <h2 className="text-3xl font-black text-finivis-dark mb-1 tracking-tight">
+                {clientName || 'Client Assessment'}
+              </h2>
+              <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
+                {clientWebsite && (
+                  <a 
+                    href={clientWebsite.startsWith('http') ? clientWebsite : `https://${clientWebsite}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    className="text-finivis-blue hover:underline transition-all flex items-center gap-1"
+                  >
+                    {clientWebsite.replace(/^https?:\/\//, '')}
+                  </a>
+                )}
+                <span className="w-1 h-1 rounded-full bg-gray-300 hidden sm:block"></span>
+                <span className={`flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border shadow-sm ${isAI 
+                  ? 'bg-blue-50 text-blue-700 border-blue-200' 
+                  : 'bg-gray-50 text-gray-500 border-gray-200'
+                }`}>
+                  {isAI ? <><Brain size={12} /> AI Scored</> : <><Calculator size={12} /> Estimated</>}
+                </span>
+                {aiError && (
+                  <span className="text-red-500 text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
+                    <AlertTriangle size={12} /> {aiError}
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
-          <div className="flex gap-3">
-            <button onClick={exportPDF} className="flex items-center gap-2 px-4 py-2 bg-finivis-blue text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
-              <FileText size={16} /> Export PDF
+
+          <div className="flex flex-wrap items-center gap-2">
+            {aiInsights && (
+              <button
+                onClick={onToggleStrategist}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs border ${showAiStrategist 
+                  ? 'bg-finivis-dark text-white border-transparent shadow-lg' 
+                  : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Layout size={14} />
+                {showAiStrategist ? "Hide Strategist View" : "Show Strategist View"}
+              </button>
+            )}
+
+            <button
+              onClick={onRunDVF}
+              disabled={dvfLoading}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold transition-all text-xs shadow-sm ${dvfLoading
+                ? 'bg-gray-50 text-gray-400 cursor-not-allowed border border-gray-100'
+                : 'bg-white border border-gray-200 text-finivis-dark hover:shadow-md hover:-translate-y-0.5'
+              }`}
+            >
+              {dvfLoading ? (
+                <><Loader2 size={14} className="animate-spin" /> Running...</>
+              ) : (
+                <><Sparkles size={14} className="text-finivis-red" /> Run DVF Analysis</>
+              )}
             </button>
-            <button onClick={exportExcel} className="flex items-center gap-2 px-4 py-2 border border-finivis-blue text-finivis-blue rounded-lg hover:bg-blue-50 transition-colors text-sm font-medium">
-              <FileSpreadsheet size={16} /> Export Excel
-            </button>
+
+            <div className="h-8 w-px bg-gray-200 mx-1 hidden lg:block"></div>
+
+            <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100">
+              <button 
+                onClick={exportPDF} 
+                className="flex items-center gap-2 px-3 py-1.5 text-gray-600 hover:text-finivis-blue hover:bg-white rounded-lg transition-all text-[11px] font-bold"
+                title="Export as PDF"
+              >
+                <FileText size={14} /> PDF
+              </button>
+              <button 
+                onClick={exportExcel} 
+                className="flex items-center gap-2 px-3 py-1.5 text-gray-600 hover:text-emerald-600 hover:bg-white rounded-lg transition-all text-[11px] font-bold"
+                title="Export as Excel"
+              >
+                <FileSpreadsheet size={14} /> EXCEL
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-bold text-finivis-dark uppercase tracking-tight">Evaluation Dashboard</h3>
+            <div className="h-4 w-px bg-gray-200 hidden sm:block"></div>
+            <p className="text-xs text-gray-400 font-medium">{results.length} Identified Opportunities</p>
           </div>
         </div>
 
@@ -220,11 +310,10 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
             <thead className="bg-finivis-light/50 text-gray-600 border-b border-gray-200">
               <tr>
                 <th className="p-3 font-semibold rounded-tl-lg">Opportunity Name</th>
-                <th className="p-3 font-semibold">Value %</th>
                 <th className="p-3 font-semibold">Data %</th>
+                <th className="p-3 font-semibold">Value %</th>
                 <th className="p-3 font-semibold">Feasibility %</th>
-                <th className="p-3 font-semibold">Risk %</th>
-                <th className="p-3 font-semibold">Overall %</th>
+                <th className="p-3 font-semibold text-lg text-finivis-dark">Overall %</th>
                 <th className="p-3 font-semibold">Priority</th>
                 <th className="p-3 font-semibold rounded-tr-lg text-right">Action</th>
               </tr>
@@ -252,10 +341,9 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
                         </div>
                       </div>
                     </td>
-                    <td className="p-3"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium">{r.scores.value}</span></td>
                     <td className="p-3"><span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md font-medium">{r.scores.data}</span></td>
+                    <td className="p-3"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium">{r.scores.value}</span></td>
                     <td className="p-3"><span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md font-medium">{r.scores.feasibility}</span></td>
-                    <td className="p-3"><span className="px-2 py-1 bg-red-50 text-red-700 rounded-md font-medium">{r.scores.risk}</span></td>
                     <td className="p-3 font-bold text-lg text-finivis-dark">{r.scores.overall}</td>
                     <td className="p-3">
                       <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${getPriorityStyle(r.priority)}`}>
@@ -267,14 +355,14 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
                         onClick={() => setSelectedOppIndex(r.originalIndex)}
                         className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-finivis-blue/5 text-finivis-blue hover:bg-finivis-blue hover:text-white rounded-lg transition-all text-xs font-bold"
                       >
-                        View Blueprint <ChevronRight size={14} />
+                        Detail Assessment <ChevronRight size={14} />
                       </button>
                     </td>
                   </tr>
                   {/* Documents sub-row */}
                   {(r.documents || []).length > 0 && (
                     <tr className="bg-[#fafbfc]">
-                      <td colSpan={8} className="px-4 py-3">
+                      <td colSpan={7} className="px-4 py-3">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-semibold text-gray-500 mr-1">Documents:</span>
                           {(r.documents || []).map((doc, di) => (
@@ -300,12 +388,12 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="flex flex-col gap-8">
         <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100">
           <h3 className="text-xl font-bold text-finivis-dark mb-2">AI Opportunity Quadrant</h3>
           <p className="text-sm text-gray-500 mb-1">Top Right = Highest Value & Easiest to Implement</p>
           <p className="text-xs text-gray-400 mb-4">Bubble size = Data Readiness &bull; Color = Risk Level (green=low, red=high)</p>
-          <div className="aspect-square">
+          <div className="aspect-video max-h-[500px] w-full">
             <Bubble data={chartData} options={chartOptions} />
           </div>
         </div>
@@ -351,7 +439,7 @@ export default function Dashboard({ opportunities, processName, onUpdateOpportun
           evaluatedOpp={activeOpp}
           clientName={processName?.split(' - ')[0] || 'Client'}
           onClose={() => setSelectedOppIndex(null)}
-          onSaveRoadmap={(data) => onUpdateOpportunity(selectedOppIndex, data)}
+          onSaveRoadmap={(data, updatedOpp) => onUpdateOpportunity(selectedOppIndex, data, updatedOpp)}
         />
       )}
     </div>

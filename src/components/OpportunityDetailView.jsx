@@ -3,47 +3,74 @@ import {
   X, ArrowLeft, Zap, Shield, Database, BarChart3,
   MessageSquare, Layout, Server, ClipboardList,
   TrendingUp, Loader2, Info, AlertTriangle, CheckCircle,
-  Calendar, Users, FileCheck, ListChecks, Layers
+  Calendar, Users, FileCheck, ListChecks, Layers, Lightbulb, RefreshCw
 } from 'lucide-react';
 import { getOpportunityPreReqs } from '../utils/aiAnalyzer';
+import NotConsideredPanel from './NotConsideredPanel';
+import KickoffReadinessPanel from './KickoffReadinessPanel';
+
+// Safe text helper — converts any value (string, object, null) into a renderable string
+const safeText = (val) => {
+  if (val === null || val === undefined) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'object') return val.item || val.role || val.text || val.name || val.task || JSON.stringify(val);
+  return String(val);
+};
 
 /**
  * OpportunityDetailView - Deep-dive screen for a single AI opportunity.
  * Now renders all sections dynamically from AI evaluation data.
  */
 export default function OpportunityDetailView({ evaluatedOpp, clientName, onClose, onSaveRoadmap }) {
-  const [schedule, setSchedule] = useState(evaluatedOpp.persisted_roadmap || null);
-  const [loading, setLoading] = useState(!evaluatedOpp.persisted_roadmap);
+  const [schedule, setSchedule] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [loadingStage, setLoadingStage] = useState('');
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedOpp, setEditedOpp] = useState(evaluatedOpp);
+
+  // Reusable fetch function — can be called from useEffect or Regenerate button
+  async function runPromptChain() {
+    try {
+      setLoading(true);
+      setLoadingStage('');
+      setError(null);
+      const scopePhases = evaluatedOpp.scope?.phases || [];
+      const data = await getOpportunityPreReqs(evaluatedOpp, clientName, scopePhases, (stage) => {
+        setLoadingStage(stage);
+      });
+      setSchedule(data);
+      if (onSaveRoadmap) {
+        onSaveRoadmap(data);
+      }
+    } catch (err) {
+      console.error("Failed to load readiness schedule:", err);
+      setError("Could not generate the readiness schedule at this time.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    if (evaluatedOpp.persisted_roadmap) {
-      setSchedule(evaluatedOpp.persisted_roadmap);
+    // Check if cached roadmap exists AND has the new format (documentChecklist)
+    const cached = evaluatedOpp.persisted_roadmap;
+    if (cached && Array.isArray(cached.preAutomationTasks) && cached.preAutomationTasks.length > 0) {
+      // Cache is fresh — use a deep copy for local state editing
+      setSchedule(JSON.parse(JSON.stringify(cached)));
       setLoading(false);
       return;
     }
 
-    async function fetchSchedule() {
-      try {
-        setLoading(true);
-        const data = await getOpportunityPreReqs(evaluatedOpp, clientName);
-        setSchedule(data);
-        if (onSaveRoadmap) {
-          onSaveRoadmap(data);
-        }
-      } catch (err) {
-        console.error("Failed to load readiness schedule:", err);
-        setError("Could not generate the readiness schedule at this time.");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchSchedule();
-  }, [evaluatedOpp, clientName, onSaveRoadmap]);
+    // No cache or stale cache — run the 3-prompt chain
+    runPromptChain();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [evaluatedOpp.opportunityName, evaluatedOpp.name, clientName]);
 
-  const { scores, priority, challenges, effort, confidence, tags } = evaluatedOpp;
+  const { priority, challenges, tags, decision, missingFields } = evaluatedOpp;
 
-  // Derive dynamic phases from scope or use sensible defaults
+  const isNotConsidered = decision?.verdict === 'Not Considered';
+
+  /* Strategic Outcome Report variables - commented out while section is hidden
   const phases = evaluatedOpp.scope?.phases || [
     { phase: 'Phase 1', title: 'Process standardization', desc: 'Aligning business logic and manual approval chains.' },
     { phase: 'Phase 2', title: 'Data preparation', desc: 'Centralizing scattered datasets and historical records.' },
@@ -51,7 +78,6 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
     { phase: 'Phase 4', title: 'Workflow deployment', desc: 'Full integration with existing systems.' }
   ];
 
-  // Dynamic challenge categories for the deep-dive grid
   const challengeCategories = [
     { key: 'data', label: 'DATA', color: 'text-purple-400' },
     { key: 'process', label: 'PROCESS', color: 'text-blue-400' },
@@ -60,12 +86,18 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
   ];
 
   const archStack = evaluatedOpp.scope?.architectureStack;
+  */
 
   function getPriorityStyle(p) {
     if (p === 'High Priority' || p === 'HIGH') return 'bg-green-50 text-green-700 border-green-100';
     if (p === 'Good Candidate' || p === 'MEDIUM') return 'bg-blue-50 text-blue-700 border-blue-100';
     if (p === 'Experimental' || p === 'LOW') return 'bg-yellow-50 text-yellow-700 border-yellow-100';
     return 'bg-red-50 text-red-700 border-red-100';
+  }
+
+  function getDecisionStyle(verdict) {
+    if (verdict === 'Approved') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    return 'bg-amber-50 text-amber-700 border-amber-200';
   }
 
   return (
@@ -79,9 +111,33 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
           <ArrowLeft size={18} /> Back to Dashboard
         </button>
         <div className="flex items-center gap-3">
+          {decision && (
+            <span className={`px-3 py-1 text-xs font-bold rounded-full border ${getDecisionStyle(decision.verdict)}`}>
+              {decision.verdict}
+            </span>
+          )}
           <span className={`px-3 py-1 text-xs font-bold rounded-full border ${getPriorityStyle(priority)}`}>
             {priority}
           </span>
+          <div className="h-6 w-px bg-gray-200 mx-1" />
+          {isEditing ? (
+            <button
+              onClick={() => {
+                setIsEditing(false);
+                if (onSaveRoadmap) onSaveRoadmap(schedule, editedOpp);
+              }}
+              className="px-4 py-1.5 bg-finivis-blue text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-all flex items-center gap-2"
+            >
+              <CheckCircle size={14} /> Save Changes
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="px-4 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-gray-50 transition-all flex items-center gap-2"
+            >
+              <ClipboardList size={14} /> Edit Mode
+            </button>
+          )}
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-400">
             <X size={20} />
           </button>
@@ -90,9 +146,18 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
 
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="mb-10">
-          <h1 className="text-4xl font-extrabold text-finivis-dark mb-3">
-            {evaluatedOpp.opportunityName}
-          </h1>
+          {isEditing ? (
+            <input
+              className="text-4xl font-extrabold text-finivis-dark mb-3 w-full bg-white border-b-2 border-finivis-blue outline-none py-1 focus:bg-blue-50/30 px-2 rounded-t-lg transition-all"
+              value={editedOpp.opportunityName}
+              onChange={(e) => setEditedOpp({ ...editedOpp, opportunityName: e.target.value })}
+            />
+          ) : (
+            <h1 className="text-4xl font-extrabold text-finivis-dark mb-3">
+              {editedOpp.opportunityName}
+            </h1>
+          )}
+          
           <div className="flex flex-wrap gap-2 mb-4">
             {tags?.map(tag => (
               <span key={tag} className="px-3 py-1 bg-white border border-gray-200 rounded-full text-xs font-semibold text-gray-600 shadow-sm">
@@ -100,10 +165,68 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
               </span>
             ))}
           </div>
-          <p className="text-lg text-gray-500 max-w-3xl leading-relaxed">
-            {evaluatedOpp.description}
-          </p>
+          
+          {isEditing ? (
+            <textarea
+              className="text-lg text-gray-500 w-full bg-white border border-gray-200 rounded-xl p-4 outline-none focus:border-finivis-blue focus:ring-4 focus:ring-finivis-blue/5 transition-all text-left"
+              rows={3}
+              value={editedOpp.description}
+              onChange={(e) => setEditedOpp({ ...editedOpp, description: e.target.value })}
+            />
+          ) : (
+            <p className="text-lg text-gray-500 max-w-3xl leading-relaxed">
+              {editedOpp.description}
+            </p>
+          )}
         </div>
+
+        {/* Missing Fields Warning */}
+        {missingFields && missingFields.length > 0 && (
+          <div className="mb-8 bg-amber-50 border border-amber-200 rounded-[2rem] p-6 shadow-sm">
+            <h4 className="text-xs font-black text-amber-700 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <AlertTriangle size={14} /> Incomplete Checklist — {missingFields.length} field{missingFields.length > 1 ? 's' : ''} missing
+            </h4>
+            <div className="grid md:grid-cols-2 gap-2">
+              {missingFields.map((mf, idx) => (
+                <div key={idx} className="flex items-start gap-2 text-xs">
+                  <span className="text-amber-500 mt-0.5">•</span>
+                  <div>
+                    <span className="font-bold text-amber-800">{mf.label}</span>
+                    <span className="text-amber-600"> — {mf.impact}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Alternative Recommendation (if present) */}
+        {evaluatedOpp.alternativeRecommendation && (
+          <div className="mb-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-[2rem] p-6 md:p-8 border border-indigo-100 shadow-sm">
+            <h4 className="text-xs font-black text-indigo-700 uppercase tracking-widest mb-3 flex items-center gap-2">
+              <Lightbulb size={14} /> Alternative Recommendation
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                evaluatedOpp.alternativeRecommendation.relationship === 'replaces'
+                  ? 'bg-orange-100 text-orange-600'
+                  : 'bg-green-100 text-green-600'
+              }`}>
+                {evaluatedOpp.alternativeRecommendation.relationship === 'replaces' ? 'Alternative' : 'Complementary'}
+              </span>
+            </h4>
+            <p className="text-sm text-gray-800 font-medium mb-2">
+              {evaluatedOpp.alternativeRecommendation.approach}
+            </p>
+            <p className="text-xs text-gray-600 leading-relaxed">
+              {evaluatedOpp.alternativeRecommendation.rationale}
+            </p>
+          </div>
+        )}
+
+        {/* CONDITIONAL: Not Considered vs Full Blueprint */}
+        {isNotConsidered ? (
+          <NotConsideredPanel evaluatedOpp={evaluatedOpp} schedule={schedule} />
+        ) : (
+          <>
 
         {/* 1. CHALLENGE MATRIX AT THE TOP */}
         <div className="mb-8">
@@ -112,246 +235,62 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
               <AlertTriangle size={20} className="text-amber-500" /> Critical Challenge Matrix
             </h3>
 
-            <div className="grid md:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-3 gap-6">
               <ChallengeCard
                 title="Data Pipeline"
                 icon={<Database size={16} />}
                 items={challenges?.data || []}
-                detail={schedule?.dataRequirements?.[0]}
-              />
-              <ChallengeCard
-                title="Process Maturity"
-                icon={<ClipboardList size={16} />}
-                items={challenges?.process || []}
-                detail={schedule?.stakeholderChecklist?.[0]}
+                detail={safeText(schedule?.dataRequirements?.[0])}
+                isEditing={isEditing}
+                onEdit={(newItems) => {
+                  const newChallenges = { ...challenges, data: newItems };
+                  setEditedOpp({ ...editedOpp, challenges: newChallenges });
+                }}
               />
               <ChallengeCard
                 title="Value Realization"
                 icon={<TrendingUp size={16} />}
                 items={challenges?.value || []}
                 detail={null}
+                isEditing={isEditing}
+                onEdit={(newItems) => {
+                  const newChallenges = { ...challenges, value: newItems };
+                  setEditedOpp({ ...editedOpp, challenges: newChallenges });
+                }}
               />
               <ChallengeCard
-                title="Tech Integration"
-                icon={<Server size={16} />}
-                items={challenges?.feasibility || []}
-                detail={schedule?.stakeholderChecklist?.[1]}
+                title="Implementation Feasibility"
+                icon={<Zap size={16} />}
+                items={[...(challenges?.process || []), ...(challenges?.feasibility || [])]}
+                detail={safeText(schedule?.stakeholderChecklist?.[0])}
+                isEditing={isEditing}
+                onEdit={(newItems) => {
+                  const newChallenges = { ...challenges, feasibility: newItems }; // Simplified: putting merged back into feasibility for now
+                  setEditedOpp({ ...editedOpp, challenges: newChallenges });
+                }}
               />
             </div>
           </div>
         </div>
 
-        {/* 2. STRATEGIC OUTCOME REPORT */}
+        {/* 2. STRATEGIC OUTCOME REPORT - Hidden per user request to reduce duplication
         <div className="mb-8">
           <div className="bg-finivis-dark text-white p-8 rounded-[2.5rem] shadow-2xl border border-gray-800 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-12 opacity-10">
-              <SparklesIcon size={120} />
-            </div>
-
-            <div className="relative z-10">
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10 pb-6 border-b border-gray-700/50">
-                <div>
-                  <h3 className="text-2xl font-black tracking-tight mb-2 flex items-center gap-3">
-                    <div className="w-8 h-8 bg-finivis-red rounded-lg flex items-center justify-center">
-                      <Zap size={18} className="text-white" />
-                    </div>
-                    Strategic Outcome Report
-                  </h3>
-                  <p className="text-gray-400 text-sm font-medium">High-level executive summary and implementation roadmap</p>
-                </div>
-                <div className="flex gap-4">
-                  <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">ROI Timeline</p>
-                    <p className="font-bold text-finivis-red">{evaluatedOpp.roiTimeline || effort || '6–9 months'}</p>
-                  </div>
-                  <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-center">
-                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Complexity</p>
-                    <p className={`font-bold ${evaluatedOpp.complexity === 'HIGH' ? 'text-red-400' : evaluatedOpp.complexity === 'LOW' ? 'text-green-400' : 'text-blue-400'}`}>
-                      {evaluatedOpp.complexity || 'Medium'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid lg:grid-cols-2 gap-12">
-                {/* Recommended Scope — Dynamic Phases */}
-                <div>
-                  <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <TrendingUp size={14} className="text-finivis-red" /> Recommended Implementation Scope
-                  </h4>
-                  {evaluatedOpp.scope?.objective && (
-                    <p className="text-sm text-gray-400 mb-6 italic">"{evaluatedOpp.scope.objective}"</p>
-                  )}
-                  <div className="space-y-4">
-                    {phases.map((step, i) => (
-                      <div key={i} className="flex gap-4 group">
-                        <div className="flex flex-col items-center">
-                          <div className="w-6 h-6 rounded-full bg-finivis-red flex items-center justify-center text-[10px] font-black shrink-0 z-10">
-                            {i + 1}
-                          </div>
-                          {i < phases.length - 1 && <div className="w-0.5 h-full bg-gray-800 -mt-1 mb-1"></div>}
-                        </div>
-                        <div className="pb-4">
-                          <p className="text-[10px] font-black text-finivis-red uppercase mb-0.5">{step.phase || `Phase ${i + 1}`}</p>
-                          <h5 className="font-bold text-white text-sm mb-1">{step.title || step.name}</h5>
-                          <p className="text-xs text-gray-400 leading-relaxed">{step.desc || step.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Challenge Summary & Automation Type */}
-                <div className="space-y-8">
-                  <div>
-                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Key Challenge Deep-Dive</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {challengeCategories.map(cat => (
-                        <div key={cat.key} className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                          <p className={`text-[10px] font-black ${cat.color} uppercase mb-2`}>{cat.label}</p>
-                          <ul className="text-xs text-gray-300 space-y-1 font-medium">
-                            {(challenges?.[cat.key] || []).length > 0
-                              ? (challenges[cat.key]).slice(0, 3).map((item, idx) => (
-                                <li key={idx}>• {item}</li>
-                              ))
-                              : <li className="text-green-400 text-[10px]">No major challenges</li>
-                            }
-                          </ul>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-gradient-to-br from-finivis-red/20 to-transparent border border-finivis-red/30 rounded-3xl">
-                    <h4 className="text-xs font-black text-finivis-red uppercase tracking-widest mb-2">Automation Type</h4>
-                    <p className="text-xl font-black text-white">{evaluatedOpp.automationType || 'AI + Workflow Automation'}</p>
-                    {evaluatedOpp.scope?.automationCoverage && (
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {evaluatedOpp.scope.automationCoverage.map((item, i) => (
-                          <span key={i} className="text-[10px] px-2 py-0.5 bg-white/10 text-gray-300 rounded-full border border-white/10">
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Architecture Stack — New section */}
-              {archStack && (
-                <div className="mt-10 pt-8 border-t border-gray-700/50">
-                  <h4 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-6 flex items-center gap-2">
-                    <Layers size={14} className="text-finivis-red" /> Recommended Architecture Stack
-                  </h4>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    {[
-                      { label: 'Data Layer', value: archStack.dataLayer, icon: <Database size={14} /> },
-                      { label: 'AI Layer', value: archStack.aiLayer, icon: <Zap size={14} /> },
-                      { label: 'Automation', value: archStack.automationLayer, icon: <Server size={14} /> },
-                      { label: 'Interface', value: archStack.interface, icon: <Layout size={14} /> },
-                      { label: 'Monitoring', value: archStack.monitoring, icon: <BarChart3 size={14} /> }
-                    ].map((layer, i) => (
-                      <div key={i} className="p-4 bg-white/5 border border-white/10 rounded-2xl">
-                        <div className="flex items-center gap-1.5 mb-2 text-gray-400">
-                          {layer.icon}
-                          <p className="text-[10px] font-black uppercase">{layer.label}</p>
-                        </div>
-                        <p className="text-xs text-gray-300 font-medium leading-relaxed">{layer.value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            ... [content omitted for brevity in comment] ...
           </div>
         </div>
+        */}
 
         <div className="grid lg:grid-cols-3 gap-8">
 
-          {/* Left Column: Metrics & Scores */}
+          {/* Left Column: Metrics & Scores - Hidden per user request
           <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <BarChart3 size={18} className="text-finivis-blue" /> Framework Scores
-              </h3>
-
-              <div className="space-y-6">
-                <ScoreBar label="Business Value" value={scores.value} color="bg-finivis-blue" />
-                <ScoreBar label="Data Readiness" value={scores.data} color="bg-purple-500" />
-                <ScoreBar label="Tech Feasibility" value={scores.feasibility} color="bg-orange-500" />
-                <ScoreBar label="Risk Resilience" value={scores.risk} color="bg-finivis-red" />
-
-                <div className="pt-6 border-t border-gray-100">
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-sm font-bold text-gray-400">OVERALL READINESS</span>
-                    <span className="text-3xl font-black text-finivis-dark">{scores.overall}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-3 rounded-full overflow-hidden">
-                    <div className="h-full bg-finivis-dark transition-all duration-1000" style={{ width: `${scores.overall}%` }}></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Data Sub-Scores (AI mode only) */}
-              {evaluatedOpp.dataSubScores && (
-                <div className="mt-6 pt-6 border-t border-gray-100">
-                  <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Data Quality Breakdown</h4>
-                  <div className="space-y-3">
-                    {[
-                      { label: 'Availability', value: evaluatedOpp.dataSubScores.availability },
-                      { label: 'Structure', value: evaluatedOpp.dataSubScores.structure },
-                      { label: 'Completeness', value: evaluatedOpp.dataSubScores.completeness },
-                      { label: 'Accessibility', value: evaluatedOpp.dataSubScores.accessibility },
-                      { label: 'Consistency', value: evaluatedOpp.dataSubScores.consistency }
-                    ].map((dim, i) => (
-                      <div key={i} className="flex items-center justify-between">
-                        <span className="text-xs text-gray-500 font-medium">{dim.label}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                            <div className="h-full bg-purple-400 rounded-full" style={{ width: `${(dim.value / 5) * 100}%` }}></div>
-                          </div>
-                          <span className="text-xs font-bold text-gray-700 w-4 text-right">{dim.value}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-finivis-dark text-white p-8 rounded-[2.5rem] border border-gray-800 shadow-xl">
-              <div className="flex items-center gap-3 mb-6">
-                <Zap size={24} className="text-yellow-400 fill-yellow-400" />
-                <h3 className="text-lg font-bold">Quick Insights</h3>
-              </div>
-              <div className="space-y-4">
-                <div className="flex justify-between border-b border-gray-700 pb-3">
-                  <span className="text-gray-400 text-sm">Target Effort</span>
-                  <span className="font-bold">{effort}</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-700 pb-3">
-                  <span className="text-gray-400 text-sm">Automation Confidence</span>
-                  <span className="font-bold text-green-400">{confidence}%</span>
-                </div>
-                <div className="flex justify-between border-b border-gray-700 pb-3">
-                  <span className="text-gray-400 text-sm">Complexity</span>
-                  <span className={`font-bold ${evaluatedOpp.complexity === 'HIGH' ? 'text-red-400' : evaluatedOpp.complexity === 'LOW' ? 'text-green-400' : 'text-blue-400'}`}>
-                    {evaluatedOpp.complexity}
-                  </span>
-                </div>
-                {evaluatedOpp.roiTimeline && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-400 text-sm">ROI Timeline</span>
-                    <span className="font-bold text-finivis-red">{evaluatedOpp.roiTimeline}</span>
-                  </div>
-                )}
-              </div>
-            </div>
+            ...
           </div>
+          */}
 
-          {/* Right Column: Pre-automation Schedule */}
-          <div className="lg:col-span-2 space-y-8">
+          {/* Right Column: Pre-automation Schedule - Now Full Width */}
+          <div className="lg:col-span-3 space-y-8">
 
             <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100 min-h-[400px]">
               <div className="flex items-center justify-between mb-6">
@@ -361,13 +300,24 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
                   </h3>
                   <p className="text-xs text-gray-400 font-medium mt-1">Steps required BEFORE Project Commencement</p>
                 </div>
-                {loading && <Loader2 size={20} className="animate-spin text-finivis-blue" />}
+                <div className="flex items-center gap-2">
+                  {loading && <Loader2 size={20} className="animate-spin text-finivis-blue" />}
+                  {!loading && (
+                    <button
+                      onClick={runPromptChain}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-finivis-blue bg-finivis-blue/5 hover:bg-finivis-blue/10 border border-finivis-blue/20 rounded-full transition-all"
+                      title="Regenerate roadmap using latest AI analysis"
+                    >
+                      <RefreshCw size={12} /> Regenerate
+                    </button>
+                  )}
+                </div>
               </div>
 
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 text-gray-400">
                   <Loader2 size={40} className="animate-spin mb-4" />
-                  <p className="font-medium">Curating readiness checklist...</p>
+                  <p className="font-medium">{loadingStage || 'Curating readiness checklist...'}</p>
                 </div>
               ) : error ? (
                 <div className="text-center py-20">
@@ -376,33 +326,119 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
                 </div>
               ) : (
                 <div className="space-y-8 animate-fade-in">
-                  <div className="p-6 rounded-2xl bg-finivis-blue/5 border border-finivis-blue/10">
+                  <div className="p-6 rounded-2xl bg-finivis-blue/5 border border-finivis-blue/10 relative group">
                     <h4 className="text-[10px] font-black text-finivis-blue uppercase tracking-widest mb-1 text-center">EXECUTIVE READINESS SUMMARY</h4>
-                    <p className="text-gray-800 font-medium text-center leading-relaxed">"{schedule.clientExecutiveSummary}"</p>
+                    {isEditing ? (
+                      <textarea
+                        className="w-full bg-white border border-finivis-blue/20 rounded-xl p-3 text-gray-800 font-medium text-sm outline-none focus:border-finivis-blue transition-all"
+                        value={schedule.clientExecutiveSummary}
+                        onChange={(e) => setSchedule({ ...schedule, clientExecutiveSummary: e.target.value })}
+                        rows={2}
+                      />
+                    ) : (
+                      <p className="text-gray-800 font-medium text-center leading-relaxed">"{schedule.clientExecutiveSummary}"</p>
+                    )}
                   </div>
 
                   <div>
-                    <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                      <Calendar size={14} /> STEP-BY-STEP READINESS SCHEDULE
-                    </h4>
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                        <Calendar size={14} /> STEP-BY-STEP READINESS SCHEDULE
+                      </h4>
+                      {isEditing && (
+                        <button
+                          onClick={() => {
+                            const newTasks = [...(schedule.preAutomationTasks || []), { task: 'New Task', description: 'Brief description...', importance: 'Standard', owner: 'Consultant' }];
+                            setSchedule({ ...schedule, preAutomationTasks: newTasks });
+                          }}
+                          className="text-[10px] font-bold text-finivis-blue hover:underline"
+                        >
+                          + Add Step
+                        </button>
+                      )}
+                    </div>
                     <div className="space-y-4">
-                      {schedule.preAutomationTasks.map((item, idx) => (
-                        <div key={idx} className="flex gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-finivis-blue group transition-all">
+                      {(schedule.preAutomationTasks || []).map((item, idx) => (
+                        <div key={idx} className="flex gap-4 p-5 bg-gray-50 rounded-2xl border border-gray-100 hover:border-finivis-blue group transition-all relative">
+                          {isEditing && (
+                            <button
+                              onClick={() => {
+                                const newTasks = schedule.preAutomationTasks.filter((_, i) => i !== idx);
+                                setSchedule({ ...schedule, preAutomationTasks: newTasks });
+                              }}
+                              className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            >
+                              <X size={14} />
+                            </button>
+                          )}
                           <div className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-sm font-black text-finivis-blue shrink-0 shadow-sm group-hover:scale-110 transition-transform">
                             {idx + 1}
                           </div>
                           <div className="flex-1">
-                            <div className="flex justify-between items-start mb-1">
-                              <h5 className="font-bold text-gray-900">{item.task}</h5>
-                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${item.importance === 'Critical' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
-                                }`}>
-                                {item.importance}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 mb-2 leading-relaxed">{item.description}</p>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
-                              <Users size={10} /> Owner: {item.owner}
-                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <div className="flex gap-2">
+                                  <input
+                                    className="flex-1 font-bold text-gray-900 bg-white border border-gray-200 rounded p-1 outline-none focus:border-finivis-blue"
+                                    value={item.task}
+                                    onChange={(e) => {
+                                      const newTasks = [...schedule.preAutomationTasks];
+                                      newTasks[idx].task = e.target.value;
+                                      setSchedule({ ...schedule, preAutomationTasks: newTasks });
+                                    }}
+                                  />
+                                  <select
+                                    className="text-[10px] font-bold uppercase rounded border border-gray-200 px-1 outline-none"
+                                    value={item.importance}
+                                    onChange={(e) => {
+                                      const newTasks = [...schedule.preAutomationTasks];
+                                      newTasks[idx].importance = e.target.value;
+                                      setSchedule({ ...schedule, preAutomationTasks: newTasks });
+                                    }}
+                                  >
+                                    <option value="Critical">Critical</option>
+                                    <option value="Standard">Standard</option>
+                                  </select>
+                                </div>
+                                <textarea
+                                  className="w-full text-xs text-gray-500 bg-white border border-gray-200 rounded p-1 outline-none focus:border-finivis-blue"
+                                  rows={2}
+                                  value={item.description}
+                                  onChange={(e) => {
+                                    const newTasks = [...schedule.preAutomationTasks];
+                                    newTasks[idx].description = e.target.value;
+                                    setSchedule({ ...schedule, preAutomationTasks: newTasks });
+                                  }}
+                                />
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                                  <Users size={10} /> 
+                                  <input
+                                    className="bg-transparent border-b border-gray-200 outline-none focus:border-finivis-blue"
+                                    value={item.owner}
+                                    placeholder="Owner"
+                                    onChange={(e) => {
+                                      const newTasks = [...schedule.preAutomationTasks];
+                                      newTasks[idx].owner = e.target.value;
+                                      setSchedule({ ...schedule, preAutomationTasks: newTasks });
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex justify-between items-start mb-1">
+                                  <h5 className="font-bold text-gray-900">{item.task}</h5>
+                                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-black uppercase ${item.importance === 'Critical' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                                    }`}>
+                                    {item.importance}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mb-2 leading-relaxed">{item.description}</p>
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+                                  <Users size={10} /> Owner: {item.owner}
+                                </div>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -415,25 +451,122 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
                         <Database size={14} /> DATA REQUIREMENTS
                       </h4>
                       <ul className="space-y-2">
-                        {schedule.dataRequirements.map((req, i) => (
-                          <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium">
-                            <div className="w-1.5 h-1.5 rounded-full bg-finivis-blue"></div>
-                            {req}
-                          </li>
-                        ))}
+                        {(schedule.dataRequirements || []).map((req, i) => {
+                          const isObject = typeof req === 'object' && req !== null;
+                          return (
+                            <li key={i} className="flex items-start gap-2 text-xs text-gray-600 font-medium">
+                              <div className="w-1.5 h-1.5 rounded-full bg-finivis-blue mt-1.5 shrink-0"></div>
+                              <div>
+                                <span className="text-gray-800 font-semibold">{isObject ? (req.item || JSON.stringify(req)) : String(req)}</span>
+                                {isObject && req.reason && (
+                                  <span className="text-gray-400 ml-1">— {req.reason}</span>
+                                )}
+                                {isObject && req.priority && (
+                                  <span className={`ml-2 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${
+                                    req.priority === 'Critical' ? 'bg-red-100 text-red-600' :
+                                    req.priority === 'High' ? 'bg-orange-100 text-orange-600' :
+                                    'bg-blue-100 text-blue-600'
+                                  }`}>{req.priority}</span>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
-                    <div className="space-y-4">
-                      <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                        <FileCheck size={14} /> STAKEHOLDER CHECKLIST
-                      </h4>
+                    <div className="space-y-4 group/items relative">
+                      <div className="flex justify-between items-center mb-4">
+                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                          <FileCheck size={14} /> STAKEHOLDER CHECKLIST
+                        </h4>
+                        {isEditing && (
+                          <button
+                            onClick={() => {
+                              const newStakeholders = [...(schedule.stakeholderChecklist || []), { role: 'New Role', reason: 'Describe role impact...', involvement: 'Ongoing' }];
+                              setSchedule({ ...schedule, stakeholderChecklist: newStakeholders });
+                            }}
+                            className="text-[10px] font-bold text-finivis-blue hover:underline"
+                          >
+                            + Add Role
+                          </button>
+                        )}
+                      </div>
                       <ul className="space-y-2">
-                        {schedule.stakeholderChecklist.map((item, i) => (
-                          <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium whitespace-nowrap">
-                            <CheckCircle size={14} className="text-green-500" />
-                            {item}
-                          </li>
-                        ))}
+                        {(schedule.stakeholderChecklist || []).map((item, i) => {
+                          const isObject = typeof item === 'object' && item !== null;
+                          return (
+                            <li key={i} className="flex items-center gap-2 text-xs text-gray-600 font-medium group/item relative">
+                              {isEditing && (
+                                <button
+                                  onClick={() => {
+                                    const newStakeholders = schedule.stakeholderChecklist.filter((_, idx) => idx !== i);
+                                    setSchedule({ ...schedule, stakeholderChecklist: newStakeholders });
+                                  }}
+                                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-400 text-white flex items-center justify-center opacity-0 group-hover/item:opacity-100 transition-opacity z-10"
+                                >
+                                  <X size={10} />
+                                </button>
+                              )}
+                              <CheckCircle size={14} className="text-green-500 shrink-0" />
+                              <div className="flex-1">
+                                {isEditing ? (
+                                  <div className="space-y-1">
+                                    <div className="flex gap-2">
+                                      <input
+                                        className="flex-1 bg-white border border-gray-100 rounded px-1 outline-none text-gray-800 font-semibold"
+                                        value={isObject ? item.role : item}
+                                        onChange={(e) => {
+                                          const newStakeholders = [...schedule.stakeholderChecklist];
+                                          if (isObject) newStakeholders[i].role = e.target.value;
+                                          else newStakeholders[i] = e.target.value;
+                                          setSchedule({ ...schedule, stakeholderChecklist: newStakeholders });
+                                        }}
+                                      />
+                                      <select
+                                        className="text-[9px] font-bold uppercase rounded border border-gray-100 px-1 outline-none bg-white"
+                                        value={isObject ? (item.involvement || 'Ongoing') : 'Ongoing'}
+                                        onChange={(e) => {
+                                          const newStakeholders = [...schedule.stakeholderChecklist];
+                                          if (isObject) newStakeholders[i].involvement = e.target.value;
+                                          else newStakeholders[i] = { role: item, involvement: e.target.value };
+                                          setSchedule({ ...schedule, stakeholderChecklist: newStakeholders });
+                                        }}
+                                      >
+                                        <option value="Ongoing">Ongoing</option>
+                                        <option value="Sign-off">Sign-off</option>
+                                        <option value="Consulted">Consulted</option>
+                                      </select>
+                                    </div>
+                                    <input
+                                      className="w-full text-[10px] text-gray-400 italic bg-white border border-gray-100 rounded px-1 outline-none"
+                                      value={isObject ? (item.reason || '') : ''}
+                                      placeholder="Reason for involvement..."
+                                      onChange={(e) => {
+                                        const newStakeholders = [...schedule.stakeholderChecklist];
+                                        if (isObject) newStakeholders[i].reason = e.target.value;
+                                        else newStakeholders[i] = { role: item, reason: e.target.value };
+                                        setSchedule({ ...schedule, stakeholderChecklist: newStakeholders });
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <>
+                                    <span className="text-gray-800 font-semibold">{isObject ? item.role : item}</span>
+                                    {isObject && item.reason && (
+                                      <span className="text-gray-400 ml-1">— {item.reason}</span>
+                                    )}
+                                    {isObject && item.involvement && (
+                                      <span className={`ml-2 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase ${item.involvement === 'Ongoing' ? 'bg-blue-100 text-blue-600' :
+                                          item.involvement === 'Sign-off' ? 'bg-purple-100 text-purple-600' :
+                                            'bg-gray-100 text-gray-500'
+                                        }`}>{item.involvement}</span>
+                                    )}
+                                  </>
+                                )}
+                              </div>
+                            </li>
+                          );
+                        })}
                       </ul>
                     </div>
                   </div>
@@ -443,28 +576,39 @@ export default function OpportunityDetailView({ evaluatedOpp, clientName, onClos
 
           </div>
         </div>
+
+        {/* Kickoff Readiness Panel — only for Approved opportunities */}
+        {!isNotConsidered && schedule && (
+          <div className="bg-white p-8 rounded-[2.5rem] shadow-apple border border-gray-100 mt-8">
+            <KickoffReadinessPanel
+              kickoffReadiness={schedule.kickoffReadiness}
+              dataRequirements={schedule.dataRequirements}
+              documentRequirements={schedule.documentRequirements}
+              accessRequirements={schedule.accessRequirements}
+              documentChecklist={schedule.documentChecklist}
+              isEditing={isEditing}
+              onUpdate={(updates) => setSchedule({ ...schedule, ...updates })}
+            />
+          </div>
+        )}
+
+          </>
+        )}
+
       </div>
     </div>
   );
 }
 
+/* Unused ScoreBar - commented out after hiding the Framework Scores section
 function ScoreBar({ label, value, color }) {
-  return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between text-sm">
-        <span className="font-bold text-gray-700">{label}</span>
-        <span className="font-black text-gray-900">{value}%</span>
-      </div>
-      <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-        <div className={`h-full ${color} rounded-full transition-all duration-1000`} style={{ width: `${value}%` }}></div>
-      </div>
-    </div>
-  );
+  ...
 }
+*/
 
-function ChallengeCard({ title, icon, items, detail }) {
+function ChallengeCard({ title, icon, items, detail, isEditing, onEdit }) {
   return (
-    <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 h-full flex flex-col">
+    <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 h-full flex flex-col group relative">
       <div className="flex items-center gap-2 mb-3 text-gray-900">
         <div className="p-1.5 bg-white rounded-lg shadow-sm border border-gray-200">
           {icon}
@@ -473,13 +617,45 @@ function ChallengeCard({ title, icon, items, detail }) {
       </div>
       <ul className="space-y-2 mb-3">
         {items.length > 0 ? items.map((item, idx) => (
-          <li key={idx} className="flex gap-2 text-xs text-gray-600 line-clamp-2">
-            <span className="text-amber-500">•</span> {item}
+          <li key={idx} className="flex gap-2 text-xs text-gray-600 group/item relative">
+            <span className="text-amber-500">•</span>
+            {isEditing ? (
+              <div className="flex-1 flex gap-1">
+                <input
+                  className="flex-1 bg-white border border-gray-200 rounded px-1 outline-none focus:border-finivis-blue"
+                  value={item}
+                  onChange={(e) => {
+                    const newItems = [...items];
+                    newItems[idx] = e.target.value;
+                    onEdit(newItems);
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const newItems = items.filter((_, i) => i !== idx);
+                    onEdit(newItems);
+                  }}
+                  className="text-red-400 hover:text-red-600 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                >
+                  <X size={10} />
+                </button>
+              </div>
+            ) : (
+              <span className="line-clamp-2">{item}</span>
+            )}
           </li>
         )) : (
           <li className="text-[10px] text-green-600 font-bold flex items-center gap-1">
             <CheckCircle size={10} /> No Major Challenges
           </li>
+        )}
+        {isEditing && (
+          <button
+            onClick={() => onEdit([...items, 'New challenge statement...'])}
+            className="text-[10px] text-finivis-blue font-bold hover:underline mt-1"
+          >
+            + Add Challenge
+          </button>
         )}
       </ul>
       {detail && (
@@ -491,6 +667,7 @@ function ChallengeCard({ title, icon, items, detail }) {
   );
 }
 
+/* Unused SparklesIcon - commented out while section is hidden
 const SparklesIcon = ({ size, className }) => (
   <svg
     width={size}
@@ -510,4 +687,5 @@ const SparklesIcon = ({ size, className }) => (
     <path d="M17 19h4" />
   </svg>
 );
+*/
 

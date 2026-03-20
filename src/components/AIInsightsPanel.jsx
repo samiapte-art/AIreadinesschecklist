@@ -174,6 +174,24 @@ export default function AIInsightsPanel({ insights }) {
             </div>
           </div>
 
+          {/* Not Considered Summary (if any opportunities were not considered) */}
+          {insights.notConsideredSummary && insights.notConsideredSummary.count > 0 && (
+            <div className="bg-amber-50 p-6 rounded-[1.5rem] border border-amber-100 shadow-sm">
+              <h4 className="text-amber-700 text-xs tracking-widest uppercase font-bold mb-3 flex items-center gap-2">
+                <AlertTriangle size={16} className="text-amber-500" /> Not Considered Opportunities ({insights.notConsideredSummary.count})
+              </h4>
+              <p className="text-amber-800 font-medium text-sm leading-relaxed mb-3">
+                {insights.notConsideredSummary.overallReason}
+              </p>
+              {insights.notConsideredSummary.pathToReconsideration && (
+                <div className="mt-3 p-4 bg-white/60 rounded-xl border border-amber-100">
+                  <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wide mb-1">Path to Reconsideration</p>
+                  <p className="text-xs text-amber-800 leading-relaxed">{insights.notConsideredSummary.pathToReconsideration}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Bottom Row: Risk, Tech, Tasks */}
           <div className="grid md:grid-cols-3 gap-6">
             <div className="bg-[#fff0f0] p-6 rounded-[1.5rem] border border-red-50 shadow-sm">

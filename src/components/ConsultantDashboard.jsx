@@ -2,13 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import Dashboard from './Dashboard';
 import AIInsightsPanel from './AIInsightsPanel';
-import { evaluateOpportunity, evaluateOpportunitiesAI } from '../utils/EvaluationEngine';
-import { Loader2, Users, Sparkles, LogOut, CheckCircle, AlertTriangle, Zap } from 'lucide-react';
+import { evaluateOpportunitiesAI } from '../utils/EvaluationEngine';
+import { Loader2, Users, Sparkles, LogOut, CheckCircle, AlertTriangle, Zap, Layout } from 'lucide-react';
 
 export default function ConsultantDashboard({ session }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
+  const [showAiStrategist, setShowAiStrategist] = useState(false);
 
   // AI / DVF States
   const [aiLoading, setAiLoading] = useState(false);
@@ -119,33 +120,67 @@ export default function ConsultantDashboard({ session }) {
     }
   }, [selectedSubmission]);
 
-  const handleUpdateOpportunity = useCallback(async (updatedOppIndex, roadmapData) => {
+  const handleUpdateOpportunity = useCallback(async (updatedOppIndex, roadmapData, updatedOpp) => {
     if (!selectedSubmission) return;
 
-    console.log(`Persisting roadmap for opportunity at index ${updatedOppIndex}`);
+    console.log(`Persisting roadmap and metadata for opportunity at index ${updatedOppIndex}`);
+    
+    // 1. Update the original opportunities_json
     const updatedOpps = [...selectedSubmission.opportunities_json];
     updatedOpps[updatedOppIndex] = {
       ...updatedOpps[updatedOppIndex],
+      ...(updatedOpp ? {
+        name: updatedOpp.opportunityName || updatedOpp.name,
+        description: updatedOpp.description
+      } : {}),
       persisted_roadmap: roadmapData
     };
 
+    // 2. Update the AI evaluations if they exist
+    let updatedAiInsights = selectedSubmission.ai_insights;
+    if (updatedOpp && updatedAiInsights?.evaluations) {
+      const newEvaluations = [...updatedAiInsights.evaluations];
+      // The index in results matches the index in aiEvaluations array
+      if (newEvaluations[updatedOppIndex]) {
+        newEvaluations[updatedOppIndex] = {
+          ...newEvaluations[updatedOppIndex],
+          ...updatedOpp,
+          // Sync naming conventions if needed
+          opportunityName: updatedOpp.opportunityName || updatedOpp.name
+        };
+        updatedAiInsights = {
+          ...updatedAiInsights,
+          evaluations: newEvaluations
+        };
+      }
+    }
+
     const { error } = await supabase
       .from('client_submissions')
-      .update({ opportunities_json: updatedOpps })
+      .update({ 
+        opportunities_json: updatedOpps,
+        ai_insights: updatedAiInsights
+      })
       .eq('id', selectedSubmission.id);
 
     if (error) {
-      console.error("Supabase Save Error (Opportunity Roadmap):", error);
+      console.error("Supabase Save Error (Opportunity Update):", error);
     } else {
-      console.log("Successfully persisted roadmap.");
+      console.log("Successfully persisted updates.");
       // Update local state to prevent re-fetch
       setSelectedSubmission(prev => {
         if (!prev) return prev;
         return {
           ...prev,
-          opportunities_json: updatedOpps
+          opportunities_json: updatedOpps,
+          ai_insights: updatedAiInsights
         };
       });
+      
+      // Update local DVF evaluations state too
+      if (updatedAiInsights?.evaluations) {
+        setDvfEvaluations(updatedAiInsights.evaluations);
+      }
     }
   }, [selectedSubmission]);
 
@@ -205,41 +240,25 @@ export default function ConsultantDashboard({ session }) {
         <div>
           {selectedSubmission ? (
             <div className="space-y-8 animate-fade-in">
-              <div className="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <h2 className="text-3xl font-extrabold text-finivis-dark mb-1">{selectedSubmission.client_name}</h2>
-                  <p className="text-gray-500 font-medium">Website: <span className="text-finivis-blue bg-blue-50 px-2 py-0.5 rounded">{selectedSubmission.client_website}</span></p>
-                </div>
-                <div className="flex items-center gap-4">
-                  {aiError && <span className="text-red-500 text-sm font-medium">{aiError}</span>}
-                  <button
-                    onClick={handleRunDVF}
-                    disabled={aiLoading}
-                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-[1.25rem] font-bold transition-all shadow-apple ${aiLoading
-                      ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                      : 'bg-white border border-gray-200 text-finivis-dark hover:shadow-lg hover:-translate-y-0.5'
-                      }`}
-                  >
-                    {aiLoading ? (
-                      <><Loader2 size={18} className="animate-spin" /> Running DVF Analysis...</>
-                    ) : (
-                      <><Sparkles size={18} className="text-finivis-red" /> Run DVF Analysis</>
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {aiInsights && <AIInsightsPanel insights={aiInsights} />}
-
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mt-8">
+              <div className="bg-white rounded-[2.5rem] shadow-apple border border-gray-100 overflow-hidden">
                 <Dashboard
                   opportunities={selectedSubmission.opportunities_json}
                   processName={`${selectedSubmission.client_name} - ${selectedSubmission.client_website}`}
                   onUpdateOpportunity={handleUpdateOpportunity}
                   aiEvaluations={dvfEvaluations}
                   scoringMode={scoringMode}
+                  clientName={selectedSubmission.client_name}
+                  clientWebsite={selectedSubmission.client_website}
+                  onRunDVF={handleRunDVF}
+                  dvfLoading={aiLoading}
+                  aiInsights={aiInsights}
+                  showAiStrategist={showAiStrategist}
+                  onToggleStrategist={() => setShowAiStrategist(!showAiStrategist)}
+                  aiError={aiError}
                 />
               </div>
+
+              {aiInsights && showAiStrategist && <AIInsightsPanel insights={aiInsights} />}
             </div>
           ) : (
             <div className="min-h-[60vh] flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-[2rem] bg-white/50 p-20">
