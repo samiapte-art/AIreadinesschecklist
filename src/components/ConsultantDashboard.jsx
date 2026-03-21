@@ -3,6 +3,7 @@ import { supabase } from '../utils/supabaseClient';
 import Dashboard from './Dashboard';
 import AIInsightsPanel from './AIInsightsPanel';
 import { evaluateOpportunitiesAI } from '../utils/EvaluationEngine';
+import { getPriorityLabel } from '../utils/ScoringEngine';
 import { Loader2, Users, Sparkles, LogOut, CheckCircle, AlertTriangle, Zap, Layout } from 'lucide-react';
 
 export default function ConsultantDashboard({ session }) {
@@ -184,6 +185,66 @@ export default function ConsultantDashboard({ session }) {
     }
   }, [selectedSubmission]);
 
+  const handleUpdateScore = useCallback(async (oppIndex, field, newValue) => {
+    if (!selectedSubmission) return false;
+
+    try {
+      // 1. Always persist score_overrides in opportunities_json (works in all modes)
+      const updatedOpps = [...selectedSubmission.opportunities_json];
+      updatedOpps[oppIndex] = {
+        ...updatedOpps[oppIndex],
+        score_overrides: {
+          ...(updatedOpps[oppIndex].score_overrides || {}),
+          [field]: newValue
+        }
+      };
+
+      // 2. Also update ai_insights.evaluations if they exist (AI mode)
+      let updatedAiInsights = selectedSubmission.ai_insights;
+      if (updatedAiInsights?.evaluations?.[oppIndex]) {
+        const newEvaluations = [...updatedAiInsights.evaluations];
+        const evalEntry = { ...newEvaluations[oppIndex] };
+        const newScores = { ...evalEntry.scores, [field]: newValue };
+        newScores.overall = Math.round(
+          (newScores.value * 0.30) + (newScores.data * 0.25) +
+          (newScores.feasibility * 0.25) + (newScores.risk * 0.20)
+        );
+        evalEntry.scores = newScores;
+        evalEntry.priority = getPriorityLabel(newScores.overall);
+        newEvaluations[oppIndex] = evalEntry;
+        updatedAiInsights = { ...updatedAiInsights, evaluations: newEvaluations };
+      }
+
+      // 3. Atomic Supabase update (single row)
+      const { error } = await supabase
+        .from('client_submissions')
+        .update({
+          opportunities_json: updatedOpps,
+          ai_insights: updatedAiInsights
+        })
+        .eq('id', selectedSubmission.id);
+
+      if (error) {
+        console.error("Score update failed:", error);
+        return false;
+      }
+
+      // 4. Update local state
+      setSelectedSubmission(prev => prev ? {
+        ...prev,
+        opportunities_json: updatedOpps,
+        ai_insights: updatedAiInsights
+      } : prev);
+      if (updatedAiInsights?.evaluations) {
+        setDvfEvaluations(updatedAiInsights.evaluations);
+      }
+      return true;
+    } catch (err) {
+      console.error("Score update error:", err);
+      return false;
+    }
+  }, [selectedSubmission]);
+
   return (
     <div className="min-h-screen bg-[#F5F7FA]">
       <header className="glass-header sticky top-0 z-10 px-6 py-4">
@@ -245,6 +306,7 @@ export default function ConsultantDashboard({ session }) {
                   opportunities={selectedSubmission.opportunities_json}
                   processName={`${selectedSubmission.client_name} - ${selectedSubmission.client_website}`}
                   onUpdateOpportunity={handleUpdateOpportunity}
+                  onUpdateScore={handleUpdateScore}
                   aiEvaluations={dvfEvaluations}
                   scoringMode={scoringMode}
                   clientName={selectedSubmission.client_name}

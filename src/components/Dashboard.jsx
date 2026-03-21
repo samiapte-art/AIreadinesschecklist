@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { evaluateOpportunity } from '../utils/EvaluationEngine';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { evaluateOpportunity, generateTags } from '../utils/EvaluationEngine';
+import { getPriorityLabel } from '../utils/ScoringEngine';
 import OpportunityDetailView from './OpportunityDetailView';
-import { Download, FileText, FileSpreadsheet, Paperclip, ChevronRight, Brain, Calculator, Layout, Sparkles, Loader2, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Download, FileText, FileSpreadsheet, Paperclip, ChevronRight, Brain, Calculator, Layout, Sparkles, Loader2, AlertTriangle, AlertCircle, Pencil } from 'lucide-react';
 import {
   Chart as ChartJS,
   LinearScale,
@@ -61,6 +62,66 @@ const quadrantLabelsPlugin = {
 
 ChartJS.register(LinearScale, PointElement, BubbleController, Tooltip, Legend, ChartDataLabels, quadrantLabelsPlugin);
 
+// Inline editable score cell for the Evaluation Dashboard table
+function EditableScoreCell({ value, field, originalIndex, colorClasses, onScoreChange, editable }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const parsed = Math.round(Number(draft));
+    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+      setDraft(value);
+      setEditing(false);
+      return;
+    }
+    if (parsed !== value) {
+      onScoreChange(originalIndex, field, parsed);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <td className="p-3">
+        <input
+          ref={inputRef}
+          type="number"
+          min={0}
+          max={100}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') { setDraft(value); setEditing(false); }
+          }}
+          onBlur={commit}
+          className={`w-16 px-2 py-1 rounded-md font-medium text-center border-2 border-finivis-blue outline-none ${colorClasses}`}
+        />
+      </td>
+    );
+  }
+
+  return (
+    <td className="p-3">
+      <span
+        onClick={editable ? () => { setDraft(value); setEditing(true); } : undefined}
+        className={`px-2 py-1 rounded-md font-medium ${colorClasses} ${editable ? 'cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-finivis-blue/40 transition-all' : ''}`}
+        title={editable ? 'Click to edit' : undefined}
+      >
+        {value}
+      </span>
+    </td>
+  );
+}
+
 // Risk-based color mapping for bubble chart
 function getRiskColor(riskScore) {
   if (riskScore >= 80) return 'rgba(16, 185, 129, 0.7)';   // Green — low risk
@@ -85,11 +146,12 @@ function getPriorityStyle(priority) {
   }
 }
 
-export default function Dashboard({ 
-  opportunities, 
-  processName, 
-  onUpdateOpportunity, 
-  aiEvaluations, 
+export default function Dashboard({
+  opportunities,
+  processName,
+  onUpdateOpportunity,
+  onUpdateScore,
+  aiEvaluations,
   scoringMode,
   clientName,
   clientWebsite,
@@ -102,23 +164,70 @@ export default function Dashboard({
 }) {
   const [selectedOppIndex, setSelectedOppIndex] = useState(null);
   const chartRef = React.useRef(null);
+  const [scoreOverrides, setScoreOverrides] = useState({});
+
+  // Clear overrides when the source-of-truth (aiEvaluations) changes
+  useEffect(() => {
+    setScoreOverrides({});
+  }, [aiEvaluations]);
+
+  const isEditable = true;
+
+  const handleScoreChange = (originalIndex, field, newValue) => {
+    setScoreOverrides(prev => ({
+      ...prev,
+      [originalIndex]: { ...(prev[originalIndex] || {}), [field]: newValue }
+    }));
+    if (onUpdateScore) {
+      onUpdateScore(originalIndex, field, newValue).then(success => {
+        if (!success) {
+          // Rollback on failure
+          setScoreOverrides(prev => {
+            const copy = { ...prev };
+            if (copy[originalIndex]) {
+              delete copy[originalIndex][field];
+              if (Object.keys(copy[originalIndex]).length === 0) delete copy[originalIndex];
+            }
+            return copy;
+          });
+        }
+      });
+    }
+  };
 
   const results = useMemo(() => {
+    let base;
     if (scoringMode === 'ai' && aiEvaluations?.length) {
-      // Use AI-driven DVF evaluations
-      return aiEvaluations.map((evalOpp, idx) => ({
+      base = aiEvaluations.map((evalOpp, idx) => ({
         ...evalOpp,
         persisted_roadmap: opportunities[idx]?.persisted_roadmap,
         originalIndex: idx
       }));
+    } else {
+      base = opportunities.map((opp, idx) => ({
+        ...opp,
+        ...evaluateOpportunity(opp),
+        originalIndex: idx
+      }));
     }
-    // Fallback: deterministic local scoring
-    return opportunities.map((opp, idx) => ({
-      ...opp,
-      ...evaluateOpportunity(opp),
-      originalIndex: idx
-    }));
-  }, [opportunities, aiEvaluations, scoringMode]);
+
+    // Apply persisted score_overrides from opportunities_json, then local scoreOverrides on top
+    return base.map(r => {
+      const persisted = opportunities[r.originalIndex]?.score_overrides;
+      const local = scoreOverrides[r.originalIndex];
+      const merged = { ...persisted, ...local };
+      if (!merged || Object.keys(merged).length === 0) return r;
+
+      const newScores = { ...r.scores, ...merged };
+      newScores.overall = Math.round(
+        (newScores.value * 0.30) + (newScores.data * 0.25) +
+        (newScores.feasibility * 0.25) + (newScores.risk * 0.20)
+      );
+      const newPriority = getPriorityLabel(newScores.overall);
+      const newTags = generateTags(newScores, newPriority, r.complexity || 'MEDIUM');
+      return { ...r, scores: newScores, priority: newPriority, tags: newTags };
+    });
+  }, [opportunities, aiEvaluations, scoringMode, scoreOverrides]);
 
   // Bubble chart: X=feasibility, Y=value, radius=dataReadiness, color=risk
   const chartData = {
@@ -1070,9 +1179,9 @@ export default function Dashboard({
                         </div>
                       </div>
                     </td>
-                    <td className="p-3"><span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-md font-medium">{r.scores.data}</span></td>
-                    <td className="p-3"><span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-md font-medium">{r.scores.value}</span></td>
-                    <td className="p-3"><span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-md font-medium">{r.scores.feasibility}</span></td>
+                    <EditableScoreCell value={r.scores.data} field="data" originalIndex={r.originalIndex} colorClasses="bg-purple-50 text-purple-700" onScoreChange={handleScoreChange} editable={isEditable} />
+                    <EditableScoreCell value={r.scores.value} field="value" originalIndex={r.originalIndex} colorClasses="bg-blue-50 text-blue-700" onScoreChange={handleScoreChange} editable={isEditable} />
+                    <EditableScoreCell value={r.scores.feasibility} field="feasibility" originalIndex={r.originalIndex} colorClasses="bg-orange-50 text-orange-700" onScoreChange={handleScoreChange} editable={isEditable} />
                     <td className="p-3 font-bold text-lg text-finivis-dark">{r.scores.overall}</td>
                     <td className="p-3">
                       <span className={`px-2.5 py-1 text-xs font-bold rounded-full border ${getPriorityStyle(r.priority)}`}>

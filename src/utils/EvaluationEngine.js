@@ -181,7 +181,7 @@ export const evaluateOpportunitiesAI = async (opportunities, clientName) => {
 /**
  * Generate logical tags for the opportunity.
  */
-function generateTags(scores, priority, complexity) {
+export function generateTags(scores, priority, complexity) {
   const tags = [];
 
   if (priority === 'HIGH' && complexity === 'LOW') tags.push('Quick Win');
