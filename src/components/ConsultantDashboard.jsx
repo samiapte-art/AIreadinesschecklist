@@ -337,7 +337,6 @@ export default function ConsultantDashboard({ session }) {
                 <div className="flex flex-wrap gap-3">
                   {submissions.map(sub => {
                     const oppCount = sub.opportunities_json?.length || 0;
-                    const hasAI = !!sub.ai_insights?.evaluations;
                     const createdDate = new Date(sub.created_at).toLocaleDateString('en-US', {
                       month: 'short', day: 'numeric', year: 'numeric'
                     });
@@ -360,14 +359,6 @@ export default function ConsultantDashboard({ session }) {
                             <span className="text-[11px] text-gray-400">{createdDate}</span>
                             <span className="text-[11px] text-gray-300">|</span>
                             <span className="text-[11px] font-medium text-finivis-blue">{oppCount} opp{oppCount !== 1 ? 's' : ''}</span>
-                            {hasAI && (
-                              <>
-                                <span className="text-[11px] text-gray-300">|</span>
-                                <span className="text-[11px] font-medium text-green-600 flex items-center gap-0.5">
-                                  <CheckCircle size={9} /> AI
-                                </span>
-                              </>
-                            )}
                           </div>
                         </div>
 
