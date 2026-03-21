@@ -87,7 +87,7 @@ export default function Auth() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-8 py-3.5 bg-finivis-blue text-white rounded-[1.2rem] font-bold text-[15px] hover:bg-blue-600 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(0,122,255,0.25)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full mt-8 py-3.5 bg-finivis-blue text-white rounded-[1.2rem] font-bold text-[15px] hover:bg-slate-800 hover:-translate-y-0.5 hover:shadow-[0_8px_20px_rgba(15,23,42,0.25)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? 'Authenticating...' : 'Sign In'}
             {!loading && <ChevronRight size={18} />}

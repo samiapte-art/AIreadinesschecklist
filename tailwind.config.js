@@ -8,7 +8,7 @@ export default {
     extend: {
       colors: {
         finivis: {
-          blue: '#007AFF', // iOS System Blue
+          blue: '#0F172A', // Finivis Navy
           red: '#FF3B30', // iOS System Red
           dark: '#1d1d1f', // Apple Typography Black
           light: '#f5f5f7', // Apple Background Light Gray
@@ -29,7 +29,7 @@ export default {
       },
       boxShadow: {
         'apple': '0 4px 24px -6px rgba(0, 0, 0, 0.04)',
-        'apple-focus': '0 0 0 4px rgba(0, 122, 255, 0.15)',
+        'apple-focus': '0 0 0 4px rgba(15, 23, 42, 0.15)',
       }
     },
   },
