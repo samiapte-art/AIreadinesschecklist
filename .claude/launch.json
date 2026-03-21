@@ -4,14 +4,14 @@
     {
       "name": "Vite Dev Server",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["C:/Users/pradi/Downloads/DVF-Framework/node_modules/vite/bin/vite.js"],
+      "runtimeArgs": ["C:/Users/pradi/Downloads/DVF-Framework/node_modules/vite/bin/vite.js", "--root", "C:/Users/pradi/Downloads/DVF-Framework"],
       "port": 5173
     },
     {
       "name": "Vite Preview",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "preview"],
-      "port": 4173
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/pradi/Downloads/DVF-Framework/node_modules/vite/bin/vite.js", "--root", "C:/Users/pradi/Downloads/DVF-Framework"],
+      "port": 5173
     }
   ]
 }

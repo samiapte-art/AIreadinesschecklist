@@ -237,7 +237,7 @@ export default function Dashboard({
         data: results.map(r => ({
           x: r.scores.feasibility,
           y: r.scores.value,
-          r: Math.max(6, (r.scores.data || 0) / 4), // Improved bubble scaling
+          r: Math.max(6, Math.min(18, (r.scores.data || 0) / 5)), // Capped bubble scaling (6-18px)
           name: r.opportunityName,
           priority: r.priority,
           risk: r.scores.risk,
@@ -250,15 +250,105 @@ export default function Dashboard({
     ]
   };
 
+  // Collision-aware label placement: assigns each bubble a unique direction to minimize overlap
+  const labelPlacements = useMemo(() => {
+    if (!results.length) return [];
+
+    const allData = results.map(r => ({
+      x: r.scores.feasibility,
+      y: r.scores.value,
+    }));
+
+    const directions = [
+      { align: 'right',  anchor: 'end',   dx: 1,  dy: 0  },
+      { align: 'left',   anchor: 'start', dx: -1, dy: 0  },
+      { align: 'bottom', anchor: 'start', dx: 0,  dy: -1 },
+      { align: 'top',    anchor: 'end',   dx: 0,  dy: 1  },
+    ];
+
+    // For each bubble, rank all directions by viability
+    const placements = allData.map((item, idx) => {
+      // Filter out directions that would push label off-chart edge
+      const viable = directions.filter(d => {
+        if (d.align === 'right'  && item.x > 80) return false;
+        if (d.align === 'left'   && item.x < 15) return false;
+        if (d.align === 'top'    && item.y > 92) return false;
+        if (d.align === 'bottom' && item.y < 8)  return false;
+        return true;
+      });
+      const candidates = viable.length > 0 ? viable : directions;
+
+      // Score each direction: higher = more space from neighbors AHEAD in that direction
+      const scored = candidates.map(dir => {
+        let minDist = Infinity;
+        for (let i = 0; i < allData.length; i++) {
+          if (i === idx) continue;
+          const other = allData[i];
+          const perp = Math.abs((other.x - item.x) * dir.dy - (other.y - item.y) * dir.dx);
+          // Only consider neighbors within a perpendicular band (could overlap the label)
+          if (perp < 25) {
+            // Signed distance: positive means neighbor is AHEAD in label direction
+            const signedDist = (other.x - item.x) * dir.dx + (other.y - item.y) * dir.dy;
+            if (signedDist > 0) {
+              minDist = Math.min(minDist, signedDist);
+            }
+          }
+        }
+        return { ...dir, score: minDist };
+      });
+
+      // Sort by score descending — best direction first
+      scored.sort((a, b) => b.score - a.score);
+      return scored;
+    });
+
+    // Greedy assignment: iterate through bubbles, assign best available direction
+    // avoiding the same direction for bubbles within 25 units of each other
+    const assigned = new Array(allData.length).fill(null);
+    const usedDirs = []; // [{ idx, align, x, y }]
+
+    // Process bubbles with most constrained positions first (near edges)
+    const order = allData.map((_, i) => i).sort((a, b) => {
+      const edgeA = Math.min(allData[a].x, 100 - allData[a].x, allData[a].y, 100 - allData[a].y);
+      const edgeB = Math.min(allData[b].x, 100 - allData[b].x, allData[b].y, 100 - allData[b].y);
+      return edgeA - edgeB; // most constrained first
+    });
+
+    for (const idx of order) {
+      const item = allData[idx];
+      const candidates = placements[idx];
+      let picked = candidates[0]; // fallback
+
+      for (const cand of candidates) {
+        // Check if a nearby bubble already uses this direction
+        const conflict = usedDirs.some(u => {
+          if (u.align !== cand.align) return false;
+          const dist = Math.sqrt((u.x - item.x) ** 2 + (u.y - item.y) ** 2);
+          return dist < 25;
+        });
+        if (!conflict) {
+          picked = cand;
+          break;
+        }
+      }
+      assigned[idx] = picked;
+      usedDirs.push({ idx, align: picked.align, x: item.x, y: item.y });
+    }
+
+    return assigned;
+  }, [results]);
+
   const chartOptions = {
     responsive: true,
-    maintainAspectRatio: false,
+    maintainAspectRatio: true,
+    aspectRatio: 1.6,
+    clip: false,
     layout: {
       padding: {
-        top: 60,
-        right: 60,
-        bottom: 30,
-        left: 30
+        top: 30,
+        right: 30,
+        bottom: 10,
+        left: 20
       }
     },
     scales: {
@@ -270,13 +360,19 @@ export default function Dashboard({
           drawBorder: false,
           borderDash: [5, 5]
         },
-        title: { 
-          display: true, 
+        title: {
+          display: true,
           text: 'IMPLEMENTATION FEASIBILITY (%)',
           color: '#94A3B8',
-          font: { size: 10, weight: 'bold', family: 'Inter' }
+          font: { size: 10, weight: 'bold', family: 'Inter' },
+          padding: { top: 8 }
         },
-        ticks: { color: '#94A3B8', font: { size: 10 } }
+        ticks: {
+          color: '#94A3B8',
+          font: { size: 10 },
+          stepSize: 20,
+          callback: (val) => val >= 0 && val <= 100 ? val : ''
+        }
       },
       y: {
         min: -5,
@@ -286,44 +382,47 @@ export default function Dashboard({
           drawBorder: false,
           borderDash: [5, 5]
         },
-        title: { 
-          display: true, 
+        title: {
+          display: true,
           text: 'BUSINESS IMPACT / VALUE (%)',
           color: '#94A3B8',
-          font: { size: 10, weight: 'bold', family: 'Inter' }
+          font: { size: 10, weight: 'bold', family: 'Inter' },
+          padding: { bottom: 8 }
         },
-        ticks: { color: '#94A3B8', font: { size: 10 } }
+        ticks: {
+          color: '#94A3B8',
+          font: { size: 10 },
+          stepSize: 20,
+          callback: (val) => val >= 0 && val <= 100 ? val : ''
+        }
       }
     },
     plugins: {
       legend: {
-        display: false // Use custom legend or none for cleaner look
+        display: false
       },
       datalabels: {
         anchor: (context) => {
-          const item = context.dataset.data[context.dataIndex];
-          return item.x > 85 ? 'start' : 'end';
+          const placement = labelPlacements[context.dataIndex];
+          return placement ? placement.anchor : 'end';
         },
         align: (context) => {
-          const item = context.dataset.data[context.dataIndex];
-          return item.x > 85 ? 'left' : 'right';
+          const placement = labelPlacements[context.dataIndex];
+          return placement ? placement.align : 'right';
         },
-        offset: 12,
-        display: 'auto', 
+        offset: 8,
+        display: true,
         clamp: true,
         formatter: (value, context) => {
           const item = context.dataset.data[context.dataIndex];
-          return item.name;
+          const name = item.name || '';
+          return name.length > 30 ? name.substring(0, 28) + '…' : name;
         },
-        font: {
-          family: 'Inter',
-          weight: '800',
-          size: 10
-        },
+        font: { family: 'Inter', weight: '700', size: 10 },
         color: '#1E293B',
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        backgroundColor: 'rgba(255, 255, 255, 0.9)',
         borderRadius: 4,
-        padding: 4,
+        padding: { top: 3, bottom: 3, left: 6, right: 6 },
         textAlign: 'center'
       },
       tooltip: {
@@ -1231,7 +1330,7 @@ export default function Dashboard({
           <h3 className="text-xl font-bold text-finivis-dark mb-2">AI Opportunity Quadrant</h3>
           <p className="text-sm text-gray-500 mb-1">Top Right = Highest Value & Easiest to Implement</p>
           <p className="text-xs text-gray-400 mb-4">Bubble size = Data Readiness &bull; Color = Risk Level (green=low, red=high)</p>
-          <div className="h-[450px]">
+          <div className="w-full overflow-visible">
             <Bubble ref={chartRef} data={chartData} options={chartOptions} />
           </div>
         </div>
