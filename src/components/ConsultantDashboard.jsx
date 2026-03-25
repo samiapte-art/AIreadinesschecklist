@@ -4,13 +4,15 @@ import Dashboard from './Dashboard';
 import AIInsightsPanel from './AIInsightsPanel';
 import { evaluateOpportunitiesAI } from '../utils/EvaluationEngine';
 import { getPriorityLabel } from '../utils/ScoringEngine';
-import { Loader2, Users, Sparkles, LogOut, CheckCircle, AlertTriangle, ArrowLeft, Globe, Calendar, ChevronRight } from 'lucide-react';
+import { Loader2, Users, Sparkles, LogOut, CheckCircle, AlertTriangle, ArrowLeft, Globe, Calendar, ChevronRight, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
+import AssessmentChecklist from './AssessmentChecklist';
 
 export default function ConsultantDashboard({ session }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showAiStrategist, setShowAiStrategist] = useState(false);
+  const [showChecklist, setShowChecklist] = useState(false);
 
   // AI / DVF States
   const [aiLoading, setAiLoading] = useState(false);
@@ -313,6 +315,35 @@ export default function ConsultantDashboard({ session }) {
               </div>
 
               {aiInsights && showAiStrategist && <AIInsightsPanel insights={aiInsights} />}
+
+              {/* Client Assessment Checklist (read-only) */}
+              {selectedSubmission.checklist_json && Object.keys(selectedSubmission.checklist_json).length > 0 && (
+                <div className="bg-white rounded-[2rem] shadow-apple border border-gray-100 overflow-hidden">
+                  <button
+                    onClick={() => setShowChecklist(!showChecklist)}
+                    className="w-full flex items-center justify-between p-6 hover:bg-gray-50/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-finivis-blue/10 flex items-center justify-center">
+                        <ClipboardList size={18} className="text-finivis-blue" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="text-sm font-bold text-gray-900">Client Assessment Checklist</h3>
+                        <p className="text-xs text-gray-400 font-medium">Responses submitted by the client</p>
+                      </div>
+                    </div>
+                    {showChecklist ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
+                  </button>
+                  {showChecklist && (
+                    <div className="px-6 pb-6">
+                      <AssessmentChecklist
+                        checklistData={selectedSubmission.checklist_json}
+                        readOnly={true}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="animate-fade-in">

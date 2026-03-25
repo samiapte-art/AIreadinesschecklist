@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import OpportunityForm from './OpportunityForm';
-import { Plus, LogOut, Loader2, FilePlus, ChevronRight, CheckCircle, X } from 'lucide-react';
+import AssessmentChecklist from './AssessmentChecklist';
+import { Plus, LogOut, Loader2, FilePlus, ChevronRight, CheckCircle, X, ClipboardList, Zap } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 
 export default function ClientForm({ session }) {
@@ -16,6 +17,8 @@ export default function ClientForm({ session }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState('');
   const [isReviewMode, setIsReviewMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('opportunities');
+  const [checklistData, setChecklistData] = useState({});
 
   const fetchSubmissions = async () => {
     setLoading(true);
@@ -52,6 +55,8 @@ export default function ClientForm({ session }) {
       setExpandedIndex(0);
       setSubmittedMessage('');
       setIsReviewMode(false);
+      setActiveTab('opportunities');
+      setChecklistData({});
     } else {
       // Load existing submission
       setSelectedSubId(sub.id);
@@ -61,6 +66,8 @@ export default function ClientForm({ session }) {
       setExpandedIndex(-1); // Collapse all on load
       setSubmittedMessage('');
       setIsReviewMode(false);
+      setActiveTab('opportunities');
+      setChecklistData(sub.checklist_json || {});
     }
   };
 
@@ -88,14 +95,15 @@ export default function ClientForm({ session }) {
 
   // Auto-save: persist changes to Supabase when editing an existing submission
   const autoSaveTimer = useRef(null);
-  const autoSave = useCallback(async (subId, opps, name, website) => {
+  const autoSave = useCallback(async (subId, opps, name, website, checklist) => {
     if (!subId) return; // Only auto-save on existing records
     const { error } = await supabase
       .from('client_submissions')
-      .update({ 
-        opportunities_json: opps, 
+      .update({
+        opportunities_json: opps,
         client_name: name,
-        client_website: website
+        client_website: website,
+        checklist_json: checklist
       })
       .eq('id', subId);
     if (error) console.error('Auto-save failed:', error);
@@ -106,20 +114,21 @@ export default function ClientForm({ session }) {
     // Debounce: wait 2 seconds after the last change before saving
     clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
-      autoSave(selectedSubId, opportunities, clientName, clientWebsite);
+      autoSave(selectedSubId, opportunities, clientName, clientWebsite, checklistData);
     }, 2000);
     return () => clearTimeout(autoSaveTimer.current);
-  }, [opportunities, clientName, clientWebsite, selectedSubId, autoSave]);
+  }, [opportunities, clientName, clientWebsite, checklistData, selectedSubId, autoSave]);
 
   const handleSubmit = async () => {
     if (!isFormValid) return;
     setIsSubmitting(true);
     
-    const payload = { 
+    const payload = {
        user_id: session?.user?.id,
-       client_name: clientName, 
-       client_website: clientWebsite, 
-       opportunities_json: opportunities 
+       client_name: clientName,
+       client_website: clientWebsite,
+       opportunities_json: opportunities,
+       checklist_json: checklistData
     };
 
     let resultError = null;
@@ -287,7 +296,7 @@ export default function ClientForm({ session }) {
           <div className="bg-white p-8 rounded-[2rem] shadow-apple border border-gray-100 grid md:grid-cols-2 gap-6">
              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Company Name</label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Acme Corp"
                   className="apple-input"
@@ -297,7 +306,7 @@ export default function ClientForm({ session }) {
              </div>
              <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Company Website</label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. acme.com"
                   className="apple-input"
@@ -307,15 +316,40 @@ export default function ClientForm({ session }) {
              </div>
           </div>
 
+          {/* Tab Navigation */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => setActiveTab('opportunities')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+                activeTab === 'opportunities'
+                  ? 'bg-finivis-dark text-white shadow-md'
+                  : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <Zap size={15} /> AI Opportunities
+            </button>
+            <button
+              onClick={() => setActiveTab('checklist')}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+                activeTab === 'checklist'
+                  ? 'bg-finivis-dark text-white shadow-md'
+                  : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <ClipboardList size={15} /> Assessment Checklist
+            </button>
+          </div>
+
+          {activeTab === 'opportunities' ? (
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-finivis-dark">Process Details <span className="text-gray-400 font-medium text-[16px]">({opportunities.length}/5)</span></h2>
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {opportunities.map((opp, idx) => (
                 <div key={idx} className={expandedIndex === idx ? "col-span-1 md:col-span-2 lg:col-span-3 transition-all" : "transition-all"}>
-                  <OpportunityForm 
+                  <OpportunityForm
                     index={idx}
                     opp={opp}
                     updateOpp={updateOpp}
@@ -328,7 +362,7 @@ export default function ClientForm({ session }) {
             </div>
 
             {opportunities.length < 5 && (
-              <button 
+              <button
                 onClick={addOpportunity}
                 className="w-full mt-4 py-4 border-2 border-dashed border-gray-200 rounded-[1rem] text-finivis-blue font-bold flex items-center justify-center gap-2 hover:bg-finivis-blue/5 transition-all bg-white text-sm"
               >
@@ -336,6 +370,14 @@ export default function ClientForm({ session }) {
               </button>
             )}
           </div>
+          ) : (
+          <div className="mb-8">
+            <AssessmentChecklist
+              checklistData={checklistData}
+              onUpdate={(itemId, value) => setChecklistData(prev => ({ ...prev, [itemId]: value }))}
+            />
+          </div>
+          )}
 
           {/* Submit Button */}
           <div className="flex justify-center mt-8">
