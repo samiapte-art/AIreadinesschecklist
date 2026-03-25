@@ -12,7 +12,7 @@ export default function ConsultantDashboard({ session }) {
   const [loading, setLoading] = useState(true);
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [showAiStrategist, setShowAiStrategist] = useState(false);
-  const [showChecklist, setShowChecklist] = useState(false);
+  const [activeTab, setActiveTab] = useState('evaluation');
 
   // AI / DVF States
   const [aiLoading, setAiLoading] = useState(false);
@@ -295,8 +295,36 @@ export default function ConsultantDashboard({ session }) {
         <div>
           {selectedSubmission ? (
             <div className="space-y-6 animate-fade-in">
-              <div className="bg-white rounded-[2.5rem] shadow-apple border border-gray-100 overflow-hidden">
-                <Dashboard
+              {/* Tab Navigation */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveTab('evaluation')}
+                  className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+                    activeTab === 'evaluation'
+                      ? 'bg-finivis-dark text-white shadow-md'
+                      : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  <Sparkles size={15} /> Detailed Assessment
+                </button>
+                {selectedSubmission.checklist_json && Object.keys(selectedSubmission.checklist_json).length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('checklist')}
+                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
+                      activeTab === 'checklist'
+                        ? 'bg-finivis-dark text-white shadow-md'
+                        : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <ClipboardList size={15} /> Assessment Checklist
+                  </button>
+                )}
+              </div>
+
+              {activeTab === 'evaluation' ? (
+                <>
+                  <div className="bg-white rounded-[2.5rem] shadow-apple border border-gray-100 overflow-hidden">
+                    <Dashboard
                   opportunities={selectedSubmission.opportunities_json}
                   processName={`${selectedSubmission.client_name} - ${selectedSubmission.client_website}`}
                   onUpdateOpportunity={handleUpdateOpportunity}
@@ -315,33 +343,22 @@ export default function ConsultantDashboard({ session }) {
               </div>
 
               {aiInsights && showAiStrategist && <AIInsightsPanel insights={aiInsights} />}
-
-              {/* Client Assessment Checklist (read-only) */}
-              {selectedSubmission.checklist_json && Object.keys(selectedSubmission.checklist_json).length > 0 && (
-                <div className="bg-white rounded-[2rem] shadow-apple border border-gray-100 overflow-hidden">
-                  <button
-                    onClick={() => setShowChecklist(!showChecklist)}
-                    className="w-full flex items-center justify-between p-6 hover:bg-gray-50/50 transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-finivis-blue/10 flex items-center justify-center">
-                        <ClipboardList size={18} className="text-finivis-blue" />
-                      </div>
-                      <div className="text-left">
-                        <h3 className="text-sm font-bold text-gray-900">Client Assessment Checklist</h3>
-                        <p className="text-xs text-gray-400 font-medium">Responses submitted by the client</p>
-                      </div>
+                </>
+              ) : (
+                <div className="bg-white rounded-[2rem] shadow-apple border border-gray-100 overflow-hidden p-6 animate-fade-in">
+                  <div className="mb-6 flex items-center gap-3 border-b border-gray-100 pb-4">
+                    <div className="w-10 h-10 rounded-xl bg-finivis-blue/10 flex items-center justify-center">
+                      <ClipboardList size={20} className="text-finivis-blue" />
                     </div>
-                    {showChecklist ? <ChevronUp size={18} className="text-gray-400" /> : <ChevronDown size={18} className="text-gray-400" />}
-                  </button>
-                  {showChecklist && (
-                    <div className="px-6 pb-6">
-                      <AssessmentChecklist
-                        checklistData={selectedSubmission.checklist_json}
-                        readOnly={true}
-                      />
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Client Assessment Checklist</h3>
+                      <p className="text-sm text-gray-500 font-medium">Responses submitted by the client</p>
                     </div>
-                  )}
+                  </div>
+                  <AssessmentChecklist
+                    checklistData={selectedSubmission.checklist_json || {}}
+                    readOnly={true}
+                  />
                 </div>
               )}
             </div>
@@ -375,7 +392,10 @@ export default function ConsultantDashboard({ session }) {
                     return (
                       <button
                         key={sub.id}
-                        onClick={() => setSelectedSubmission(sub)}
+                        onClick={() => {
+                          setSelectedSubmission(sub);
+                          setActiveTab('evaluation');
+                        }}
                         className="group text-left bg-white rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:border-finivis-blue/20 transition-all duration-200 cursor-pointer px-4 py-3 flex items-center gap-3 min-w-[260px] max-w-[340px]"
                       >
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-finivis-blue/10 to-finivis-blue/5 flex items-center justify-center shrink-0">

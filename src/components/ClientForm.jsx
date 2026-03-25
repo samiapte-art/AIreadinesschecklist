@@ -91,7 +91,7 @@ export default function ClientForm({ session }) {
     setOpportunities(newOpps);
   };
 
-  const isFormValid = opportunities.some(opp => opp.name && opp.description) && clientName.trim() !== '' && clientWebsite.trim() !== '';
+  const isFormValid = clientName.trim() !== '' && clientWebsite.trim() !== '';
 
   // Auto-save: persist changes to Supabase when editing an existing submission
   const autoSaveTimer = useRef(null);
@@ -252,31 +252,35 @@ export default function ClientForm({ session }) {
                  </button>
                </div>
 
-               <h4 className="font-bold text-gray-900 mb-4 tracking-tight">Process Opportunities ({opportunities.length})</h4>
-               <div className="space-y-4">
-                 {opportunities.map((opp, idx) => (
-                   <div key={idx} className="p-5 rounded-2xl border border-gray-100 bg-gray-50/50">
-                     <div className="flex items-start gap-4">
-                       <div className="w-8 h-8 rounded-full bg-finivis-blue/10 text-finivis-blue flex items-center justify-center font-bold text-sm shrink-0">
-                         {idx + 1}
-                       </div>
-                       <div>
-                         <h5 className="font-bold text-gray-900 text-[15px]">{opp.name || 'Unnamed Opportunity'}</h5>
-                         <p className="text-sm text-gray-600 mt-1.5 leading-relaxed whitespace-pre-wrap">{opp.description || 'No description provided.'}</p>
-                         {opp.businessValue?.length > 0 && (
-                           <div className="flex flex-wrap gap-2 mt-3">
-                             {opp.businessValue.map((bv, i) => (
-                               <span key={i} className="px-2.5 py-1 text-xs font-semibold bg-white border border-gray-200 text-gray-600 rounded-md">
-                                 {bv}
-                               </span>
-                             ))}
+               {opportunities.some(opp => opp.name || opp.description) && (
+                 <>
+                   <h4 className="font-bold text-gray-900 mb-4 tracking-tight">Process Opportunities ({opportunities.filter(o => o.name || o.description).length})</h4>
+                   <div className="space-y-4">
+                     {opportunities.filter(o => o.name || o.description).map((opp, idx) => (
+                       <div key={idx} className="p-5 rounded-2xl border border-gray-100 bg-gray-50/50">
+                         <div className="flex items-start gap-4">
+                           <div className="w-8 h-8 rounded-full bg-finivis-blue/10 text-finivis-blue flex items-center justify-center font-bold text-sm shrink-0">
+                             {idx + 1}
                            </div>
-                         )}
+                           <div>
+                             <h5 className="font-bold text-gray-900 text-[15px]">{opp.name || 'Unnamed Opportunity'}</h5>
+                             <p className="text-sm text-gray-600 mt-1.5 leading-relaxed whitespace-pre-wrap">{opp.description || 'No description provided.'}</p>
+                             {opp.businessValue?.length > 0 && (
+                               <div className="flex flex-wrap gap-2 mt-3">
+                                 {opp.businessValue.map((bv, i) => (
+                                   <span key={i} className="px-2.5 py-1 text-xs font-semibold bg-white border border-gray-200 text-gray-600 rounded-md">
+                                     {bv}
+                                   </span>
+                                 ))}
+                               </div>
+                             )}
+                           </div>
+                         </div>
                        </div>
-                     </div>
+                     ))}
                    </div>
-                 ))}
-               </div>
+                 </>
+               )}
             </div>
             
             <button 

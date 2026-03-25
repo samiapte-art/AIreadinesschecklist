@@ -12,6 +12,7 @@ create table if not exists public.client_submissions (
   client_name text not null,
   client_website text not null,
   opportunities_json jsonb not null,
+  checklist_json jsonb default '{}'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
@@ -27,6 +28,12 @@ create policy "Clients can insert own submissions"
 create policy "Clients can view own submissions"
   on public.client_submissions for select
   using (auth.uid() = user_id);
+
+-- Client can update their own submissions
+create policy "Clients can update own submissions"
+  on public.client_submissions for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 -- Consultants can view all submissions
 create policy "Consultants can view all submissions"
