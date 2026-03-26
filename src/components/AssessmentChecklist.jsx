@@ -105,26 +105,28 @@ export default function AssessmentChecklist({ checklistData = {}, onUpdate, read
                           {item.id}. {item.label}
                         </label>
                       </div>
-                      <p className="text-xs text-gray-400 font-medium ml-[23px] whitespace-pre-line">
-                        {item.description}
-                      </p>
-                      {readOnly ? (
-                        value ? (
-                          <div className="ml-[23px] bg-gray-50 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-line">
-                            {value}
-                          </div>
+                      <div className="pl-[23px] space-y-3">
+                        <p className="text-xs text-gray-400 font-medium whitespace-pre-line">
+                          {item.description}
+                        </p>
+                        {readOnly ? (
+                          value ? (
+                            <div className="bg-gray-50 rounded-xl p-3 text-sm text-gray-700 whitespace-pre-line">
+                              {value}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-300 italic">No response provided</p>
+                          )
                         ) : (
-                          <p className="ml-[23px] text-xs text-gray-300 italic">No response provided</p>
-                        )
-                      ) : (
-                        <textarea
-                          className="apple-input ml-[23px]"
-                          rows={3}
-                          placeholder="Enter your response..."
-                          value={value}
-                          onChange={(e) => onUpdate(item.id, e.target.value)}
-                        />
-                      )}
+                          <textarea
+                            className="apple-input"
+                            rows={3}
+                            placeholder="Enter your response..."
+                            value={value}
+                            onChange={(e) => onUpdate(item.id, e.target.value)}
+                          />
+                        )}
+                      </div>
                     </div>
                   );
                 })}

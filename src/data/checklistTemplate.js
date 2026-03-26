@@ -81,12 +81,12 @@ export const CHECKLIST_SECTIONS = [
         description: 'What are the requirements for the agent\'s user interface (if any)? (e.g., web interface, mobile app, command-line interface)'
       },
       {
-        id: '5.2',
+        id: '4.3',
         label: 'Scalability and Performance',
         description: 'What are the requirements for scalability and performance? (e.g., response time, throughput, handling peak loads)'
       },
       {
-        id: '5.5',
+        id: '4.4',
         label: 'Dependencies',
         description: 'Are there any dependencies that could affect the project? (e.g., availability of data, integration with other systems)'
       }
