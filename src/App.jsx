@@ -71,7 +71,7 @@ function App() {
           path="/dataintake" 
           element={
             !session ? (
-              <Navigate to="/" replace />
+              <Auth />
             ) : (
               <DataIntakePage session={session} />
             )

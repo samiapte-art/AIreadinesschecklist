@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, LogOut, Loader2, FilePlus, ChevronRight, CheckCircle, X, ClipboardList, ArrowLeft } from 'lucide-react';
+import { Plus, LogOut, Loader2, FilePlus, ChevronRight, CheckCircle, X, ClipboardList } from 'lucide-react';
 import { supabase } from '../utils/supabaseClient';
 import AssessmentChecklist from './AssessmentChecklist';
 
@@ -98,9 +98,6 @@ export default function DataIntakePage() {
       <header className="glass-header sticky top-0 z-10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link to="/" className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-              <ArrowLeft size={20} className="text-gray-500" />
-            </Link>
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="Finivis Logo" className="h-8 object-contain" />
               <h1 className="text-xl font-bold tracking-tight text-finivis-dark">Data Intake</h1>
@@ -181,12 +178,12 @@ export default function DataIntakePage() {
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Assessment Selected</h3>
             <p className="text-gray-500 mb-8 max-w-md mx-auto">Please select an existing project from the dropdown above or create a new one on the main dashboard to start the Data Intake process.</p>
-            <Link 
-              to="/" 
-              className="inline-flex items-center justify-center px-6 py-3 bg-finivis-dark text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all"
+            <button 
+              onClick={() => handleSelectSubmission(null)}
+              className="w-full py-4 border-2 border-dashed border-gray-300 rounded-[1.2rem] text-gray-600 font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-all bg-white"
             >
-              Go to Opportunity Tracker
-            </Link>
+              <Plus size={20} /> Select Different Assessment
+            </button>
           </div>
         )}
       </main>
