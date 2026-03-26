@@ -14,6 +14,7 @@ export default function DataIntakePage({ session }) {
   const [checklistData, setChecklistData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState('');
+  const [isReviewMode, setIsReviewMode] = useState(false);
   
   // New Assessment Creation State
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -124,8 +125,9 @@ export default function DataIntakePage({ session }) {
       alert("Failed to save. Please check your connection.");
       console.error(error);
     } else {
-      setSubmittedMessage('Data Intake completed successfully!');
-      setTimeout(() => setSubmittedMessage(''), 3000);
+      setSubmittedMessage('Data Intake completed!');
+      setIsReviewMode(true);
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
     }
   };
 
@@ -133,15 +135,17 @@ export default function DataIntakePage({ session }) {
     <div className="min-h-screen bg-[#F5F7FA]">
       <header className="glass-header sticky top-0 z-10 px-6 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <img src="/logo.png" alt="Finivis Logo" className="h-8 object-contain" />
-              <h1 className="text-xl font-bold tracking-tight text-finivis-dark">Data Intake</h1>
+          {!isReviewMode && (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3">
+                <img src="/logo.png" alt="Finivis Logo" className="h-8 object-contain" />
+                <h1 className="text-xl font-bold tracking-tight text-finivis-dark">Data Intake</h1>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex items-center gap-4">
-            {!isCreatingNew && (
+            {!isCreatingNew && !isReviewMode && (
               <button 
                 onClick={() => setIsCreatingNew(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-bold border border-green-100 hover:bg-green-100 transition-all"
@@ -149,10 +153,12 @@ export default function DataIntakePage({ session }) {
                 <Plus size={16} /> New Project
               </button>
             )}
-            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Project:</span>
-                <span className="text-sm font-semibold text-gray-700">{clientName || 'No Selection'}</span>
-            </div>
+            {!isReviewMode && (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Project:</span>
+                  <span className="text-sm font-semibold text-gray-700">{clientName || 'No Selection'}</span>
+              </div>
+            )}
             <button 
               onClick={() => supabase.auth.signOut()}
               className="text-gray-500 hover:text-red-500 transition-colors p-2 rounded-lg hover:bg-red-50"
@@ -164,26 +170,28 @@ export default function DataIntakePage({ session }) {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex flex-col gap-6 mb-10">
-           <div>
-              <h2 className="text-3xl font-extrabold text-finivis-dark tracking-tight">Complete Data Intake</h2>
-              <p className="text-gray-500 mt-2">Fill in the technical and operational details for your automation assessment.</p>
-           </div>
-           
-           <div className="w-full">
-             <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 ml-1">Select Assessment</label>
-             <select 
-               className="apple-input w-full"
-               value={selectedSubId || ''}
-               onChange={(e) => handleSelectSubmission(submissions.find(s => s.id === e.target.value))}
-             >
-                <option value="" disabled>Choose an existing assessment...</option>
-                {submissions.map(sub => (
-                  <option key={sub.id} value={sub.id}>{sub.client_name || 'Unnamed Project'}</option>
-                ))}
-             </select>
-           </div>
-        </div>
+        {!isReviewMode && (
+          <div className="flex flex-col gap-6 mb-10">
+             <div>
+                <h2 className="text-3xl font-extrabold text-finivis-dark tracking-tight">Complete Data Intake</h2>
+                <p className="text-gray-500 mt-2">Fill in the technical and operational details for your automation assessment.</p>
+             </div>
+             
+             <div className="w-full">
+               <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 ml-1">Select Assessment</label>
+               <select 
+                 className="apple-input w-full"
+                 value={selectedSubId || ''}
+                 onChange={(e) => handleSelectSubmission(submissions.find(s => s.id === e.target.value))}
+               >
+                  <option value="" disabled>Choose an existing assessment...</option>
+                  {submissions.map(sub => (
+                    <option key={sub.id} value={sub.id}>{sub.client_name || 'Unnamed Project'}</option>
+                  ))}
+               </select>
+             </div>
+          </div>
+        )}
 
         {submittedMessage && (
           <div className="mb-6 bg-green-50 border border-green-100 text-green-700 p-4 rounded-2xl flex items-center gap-3 animate-fade-in">
@@ -192,8 +200,42 @@ export default function DataIntakePage({ session }) {
           </div>
         )}
 
-        {isCreatingNew ? (
+        {isReviewMode ? (
+          <div className="animate-fade-in py-10">
+            <div className="bg-white p-12 rounded-[3rem] shadow-apple border border-green-50 text-center max-w-2xl mx-auto">
+              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-8 border border-green-100">
+                <CheckCircle size={40} className="text-green-600" />
+              </div>
+              <h2 className="text-3xl font-extrabold text-gray-900 mb-3 tracking-tight">Data Intake Completed</h2>
+              <p className="text-gray-500 mb-8 text-lg">Your operational assessment for <span className="text-finivis-blue font-bold">{clientName}</span> is now finalized successfully.</p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button 
+                  onClick={() => setIsReviewMode(false)}
+                  className="px-8 py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-2xl font-bold transition-all"
+                >
+                  Edit Details
+                </button>
+                <button 
+                  onClick={() => {
+                    handleSelectSubmission(null);
+                    setIsCreatingNew(true);
+                    setIsReviewMode(false);
+                  }}
+                  className="px-8 py-3.5 bg-finivis-blue text-white rounded-2xl font-bold shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                >
+                  <Plus size={18} /> Start New Assessment
+                </button>
+              </div>
+            </div>
+            
+            <div className="mt-12 text-center text-gray-400 text-sm">
+                Assessment ID: <span className="font-mono text-gray-300">{selectedSubId}</span> 
+            </div>
+          </div>
+        ) : isCreatingNew ? (
           <div className="bg-white rounded-[2rem] p-8 shadow-apple border border-finivis-blue/20 animate-fade-in mb-10">
+            {/* ... rest stays same ... */}
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-gray-900">Create New Assessment</h3>
               <button onClick={() => setIsCreatingNew(false)} className="text-gray-400 hover:text-gray-600">
