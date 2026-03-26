@@ -14,6 +14,11 @@ export default function DataIntakePage() {
   const [checklistData, setChecklistData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState('');
+  
+  // New Assessment Creation State
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newClientName, setNewClientName] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
 
   const handleSelectSubmission = useCallback((sub) => {
     if (!sub) {
@@ -26,8 +31,38 @@ export default function DataIntakePage() {
       setClientName(sub.client_name || '');
       setChecklistData(sub.checklist_json || {});
       setSubmittedMessage('');
+      setIsCreatingNew(false); // Close creation form if open
     }
   }, []);
+
+  const handleCreateNew = async (e) => {
+    e.preventDefault();
+    if (!newClientName.trim()) return;
+    
+    setIsCreating(true);
+    const payload = {
+      user_id: session?.user?.id,
+      client_name: newClientName,
+      opportunities_json: [{}],
+      checklist_json: {}
+    };
+
+    const { data, error } = await supabase
+      .from('client_submissions')
+      .insert([payload])
+      .select();
+
+    setIsCreating(false);
+    if (error) {
+      alert("Failed to create assessment.");
+      console.error(error);
+    } else if (data && data[0]) {
+      setIsCreatingNew(false);
+      setNewClientName('');
+      await fetchSubmissions(); // Re-fetch to get the new list
+      handleSelectSubmission(data[0]); // Select the new one
+    }
+  };
 
   const fetchSubmissions = useCallback(async () => {
     setLoading(true);
@@ -105,6 +140,14 @@ export default function DataIntakePage() {
           </div>
 
           <div className="flex items-center gap-4">
+            {!isCreatingNew && (
+              <button 
+                onClick={() => setIsCreatingNew(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-sm font-bold border border-green-100 hover:bg-green-100 transition-all"
+              >
+                <Plus size={16} /> New Project
+              </button>
+            )}
             <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Project:</span>
                 <span className="text-sm font-semibold text-gray-700">{clientName || 'No Selection'}</span>
@@ -145,7 +188,45 @@ export default function DataIntakePage() {
           </div>
         )}
 
-        {loading ? (
+        {isCreatingNew ? (
+          <div className="bg-white rounded-[2rem] p-8 shadow-apple border border-finivis-blue/20 animate-fade-in mb-10">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Create New Assessment</h3>
+              <button onClick={() => setIsCreatingNew(false)} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+            <form onSubmit={handleCreateNew} className="space-y-6">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Company / Project Name</label>
+                <input 
+                  autoFocus
+                  className="apple-input"
+                  placeholder="e.g. Acme Corp Automation"
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button 
+                  type="button"
+                  onClick={() => setIsCreatingNew(false)}
+                  className="px-6 py-2.5 rounded-xl font-bold text-gray-500 hover:bg-gray-50 transition-all"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isCreating || !newClientName.trim()}
+                  className="px-8 py-2.5 bg-finivis-blue text-white rounded-xl font-bold shadow-md hover:bg-slate-800 transition-all flex items-center gap-2 disabled:opacity-50"
+                >
+                  {isCreating ? <Loader2 size={18} className="animate-spin" /> : <><CheckCircle size={18} /> Start Assessment</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
             <Loader2 className="animate-spin text-finivis-blue mb-4" size={32} />
             <p className="text-gray-500 font-medium">Loading your assessment data...</p>
@@ -177,12 +258,12 @@ export default function DataIntakePage() {
               <ClipboardList size={32} />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Assessment Selected</h3>
-            <p className="text-gray-500 mb-8 max-w-md mx-auto">Please select an existing project from the dropdown above or create a new one on the main dashboard to start the Data Intake process.</p>
+            <p className="text-gray-500 mb-8 max-w-md mx-auto">Please select an existing project from the dropdown above or create a new one to start the Data Intake process.</p>
             <button 
-              onClick={() => handleSelectSubmission(null)}
-              className="w-full py-4 border-2 border-dashed border-gray-300 rounded-[1.2rem] text-gray-600 font-bold flex items-center justify-center gap-2 hover:bg-gray-50 transition-all bg-white"
+              onClick={() => setIsCreatingNew(true)}
+              className="px-8 py-3 bg-finivis-dark text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center gap-2 mx-auto"
             >
-              <Plus size={20} /> Select Different Assessment
+              <Plus size={18} /> Create New Assessment
             </button>
           </div>
         )}
