@@ -164,22 +164,25 @@ export default function DataIntakePage({ session }) {
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10">
-        <div className="flex items-baseline justify-between mb-8">
+        <div className="flex flex-col gap-6 mb-10">
            <div>
               <h2 className="text-3xl font-extrabold text-finivis-dark tracking-tight">Complete Data Intake</h2>
               <p className="text-gray-500 mt-2">Fill in the technical and operational details for your automation assessment.</p>
            </div>
            
-           <select 
-             className="apple-input w-auto min-w-[200px]"
-             value={selectedSubId || ''}
-             onChange={(e) => handleSelectSubmission(submissions.find(s => s.id === e.target.value))}
-           >
-              <option value="" disabled>Select Assessment</option>
-              {submissions.map(sub => (
-                <option key={sub.id} value={sub.id}>{sub.client_name || 'Unnamed Project'}</option>
-              ))}
-           </select>
+           <div className="w-full">
+             <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-2 ml-1">Select Assessment</label>
+             <select 
+               className="apple-input w-full"
+               value={selectedSubId || ''}
+               onChange={(e) => handleSelectSubmission(submissions.find(s => s.id === e.target.value))}
+             >
+                <option value="" disabled>Choose an existing assessment...</option>
+                {submissions.map(sub => (
+                  <option key={sub.id} value={sub.id}>{sub.client_name || 'Unnamed Project'}</option>
+                ))}
+             </select>
+           </div>
         </div>
 
         {submittedMessage && (
