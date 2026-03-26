@@ -91,7 +91,7 @@ export default function ClientForm({ session }) {
     setOpportunities(newOpps);
   };
 
-  const isFormValid = clientName.trim() !== '' && clientWebsite.trim() !== '';
+  const isFormValid = true;
 
   // Auto-save: persist changes to Supabase when editing an existing submission
   const autoSaveTimer = useRef(null);
@@ -120,7 +120,7 @@ export default function ClientForm({ session }) {
   }, [opportunities, clientName, clientWebsite, checklistData, selectedSubId, autoSave]);
 
   const handleSubmit = async () => {
-    if (!isFormValid) return;
+    // No validation guard - making everything optional
     setIsSubmitting(true);
     
     const payload = {
