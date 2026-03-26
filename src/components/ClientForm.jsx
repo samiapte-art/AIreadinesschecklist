@@ -249,19 +249,6 @@ export default function ClientForm({ session }) {
                    </div>
                  </>
                )}
-
-               <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-gray-900">Next Step: Data Intake</h4>
-                    <p className="text-sm text-gray-500 mt-1">Complete the operational detail checklist for this assessment.</p>
-                  </div>
-                  <Link 
-                    to="/dataintake" 
-                    className="flex items-center gap-2 px-5 py-2.5 bg-finivis-blue text-white font-bold rounded-xl hover:bg-slate-800 transition-all text-sm shadow-md"
-                  >
-                    Fill Data Intake <ExternalLink size={16} />
-                  </Link>
-               </div>
             </div>
             
             <button 
@@ -301,19 +288,14 @@ export default function ClientForm({ session }) {
             </div>
 
             <div className="flex items-center justify-between">
+            <div className="flex gap-2">
               <div
                 className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold bg-finivis-dark text-white shadow-md"
               >
                 <Zap size={15} /> Opportunity Tracker
               </div>
-              
-              <Link 
-                to="/dataintake" 
-                className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-bold bg-white text-finivis-blue border border-finivis-blue/30 hover:bg-finivis-blue/5 transition-all shadow-sm"
-              >
-                <ClipboardList size={15} /> Go to Data Intake <ExternalLink size={14} />
-              </Link>
             </div>
+          </div>
 
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
