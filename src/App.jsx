@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { supabase } from './utils/supabaseClient';
 import ClientForm from './components/ClientForm';
 import ConsultantDashboard from './components/ConsultantDashboard';
+import DataIntakePage from './components/DataIntakePage';
 
 import Auth from './components/Auth';
 
@@ -62,6 +63,17 @@ function App() {
               <ConsultantDashboard session={session} />
             ) : (
               <Navigate to="/" replace />
+            )
+          } 
+        />
+        {/* Data Intake Route */}
+        <Route 
+          path="/dataintake" 
+          element={
+            !session ? (
+              <Navigate to="/" replace />
+            ) : (
+              <DataIntakePage session={session} />
             )
           } 
         />
