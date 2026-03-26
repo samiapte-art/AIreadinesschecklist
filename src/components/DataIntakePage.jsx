@@ -4,7 +4,7 @@ import { Plus, LogOut, Loader2, FilePlus, ChevronRight, CheckCircle, X, Clipboar
 import { supabase } from '../utils/supabaseClient';
 import AssessmentChecklist from './AssessmentChecklist';
 
-export default function DataIntakePage() {
+export default function DataIntakePage({ session }) {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   
