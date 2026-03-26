@@ -452,7 +452,7 @@ export default function Dashboard({
     const doc = new jsPDF();
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
-    doc.text("Finivis Solutions - AI Opportunity Evaluation", 14, 20);
+    doc.text("Finivis Solutions - Opportunity Tracker Evaluation", 14, 20);
 
     doc.setFontSize(14);
     doc.setFont("helvetica", "normal");
@@ -580,7 +580,7 @@ export default function Dashboard({
     titleSlide.addShape(pptx.ShapeType.rect, {
       x: 0.8, y: 3.1, w: 2.5, h: 0.05, fill: { color: ACCENT_BLUE }
     });
-    titleSlide.addText("AI Opportunity\nAssessment", {
+    titleSlide.addText("Opportunity Tracker\nAssessment", {
       x: 0.8, y: 1.5, w: 8, fontSize: 48, fontFace: 'Arial', color: WHITE, bold: true, lineSpacingMultiple: 1.1
     });
     titleSlide.addText(`Prepared for ${clientName || 'Client'}`, {
@@ -735,7 +735,7 @@ export default function Dashboard({
     // SLIDE 4: AI OPPORTUNITY QUADRANT
     // ========================================
     const chartSlide = pptx.addSlide({ masterName: 'MASTER_SLIDE' });
-    chartSlide.addText("AI OPPORTUNITY QUADRANT", {
+    chartSlide.addText("OPPORTUNITY TRACKER QUADRANT", {
       x: 0.5, y: 0.6, w: '80%', fontSize: 28, fontFace: 'Arial', color: NAVY, bold: true
     });
     chartSlide.addText("Feasibility vs. Value Mapping", {

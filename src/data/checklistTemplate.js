@@ -67,39 +67,8 @@ export const CHECKLIST_SECTIONS = [
     ]
   },
   {
-    id: 'agent_capabilities',
-    title: 'Agent Capabilities',
-    items: [
-      {
-        id: '3.1',
-        label: 'Required Agent Functions',
-        description: 'What tasks will the AI agent need to perform? (e.g., data extraction, decision-making, task execution, communication)'
-      },
-      {
-        id: '3.2',
-        label: 'Decision-Making Logic',
-        description: 'How are decisions currently made in the process?\nCan this logic be expressed as rules, decision trees, or algorithms?\nAre there any exceptions or edge cases?'
-      },
-      {
-        id: '3.3',
-        label: 'Integration Requirements',
-        description: 'With what systems or applications does the AI agent need to integrate? (e.g., CRM, ERP, databases, messaging platforms)'
-      },
-      {
-        id: '3.4',
-        label: 'Communication Requirements',
-        description: 'How will the AI agent communicate with users or other systems? (e.g., email, chat, API)'
-      },
-      {
-        id: '3.5',
-        label: 'Error Handling and Exception Management',
-        description: 'How should the AI agent handle errors or unexpected situations? Are there any specific error logging or notification requirements?'
-      }
-    ]
-  },
-  {
     id: 'user_interaction',
-    title: 'User Interaction and Experience',
+    title: 'User Interface',
     items: [
       {
         id: '4.1',
@@ -110,32 +79,11 @@ export const CHECKLIST_SECTIONS = [
         id: '4.2',
         label: 'User Interface (UI) Requirements',
         description: 'What are the requirements for the agent\'s user interface (if any)? (e.g., web interface, mobile app, command-line interface)'
-      }
-    ]
-  },
-  {
-    id: 'technical_requirements',
-    title: 'Technical Requirements',
-    items: [
-      {
-        id: '5.1',
-        label: 'Deployment Environment',
-        description: 'Where will the AI agent be deployed? (e.g., cloud, on-premises, specific servers)'
       },
       {
         id: '5.2',
         label: 'Scalability and Performance',
         description: 'What are the requirements for scalability and performance? (e.g., response time, throughput, handling peak loads)'
-      },
-      {
-        id: '5.3',
-        label: 'Security Requirements',
-        description: 'What security measures need to be in place for the AI agent? (e.g., access control, encryption, authentication)'
-      },
-      {
-        id: '5.4',
-        label: 'Maintenance and Support',
-        description: 'What are the client\'s requirements for ongoing maintenance and support?'
       },
       {
         id: '5.5',

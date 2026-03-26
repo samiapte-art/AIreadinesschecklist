@@ -170,7 +170,7 @@ export default function ClientForm({ session }) {
           <div className="flex items-center gap-3 shrink-0">
             <img src="/logo.png" alt="Finivis Logo" className="h-8 object-contain" />
             <h1 className="text-xl font-bold tracking-tight text-finivis-dark hidden sm:block">
-              AI Opportunity Discovery Tracker
+              Opportunity Tracker
             </h1>
           </div>
           
@@ -330,7 +330,7 @@ export default function ClientForm({ session }) {
                   : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
               }`}
             >
-              <Zap size={15} /> AI Opportunities
+              <Zap size={15} /> Opportunity Tracker
             </button>
             <button
               onClick={() => setActiveTab('checklist')}
@@ -340,7 +340,7 @@ export default function ClientForm({ session }) {
                   : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
               }`}
             >
-              <ClipboardList size={15} /> Assessment Checklist
+              <ClipboardList size={15} /> Data Intake
             </button>
           </div>
 

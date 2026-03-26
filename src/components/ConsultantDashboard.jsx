@@ -316,7 +316,7 @@ export default function ConsultantDashboard({ session }) {
                         : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50'
                     }`}
                   >
-                    <ClipboardList size={15} /> Assessment Checklist
+                    <ClipboardList size={15} /> Data Intake
                   </button>
                 )}
               </div>
@@ -351,7 +351,7 @@ export default function ConsultantDashboard({ session }) {
                       <ClipboardList size={20} className="text-finivis-blue" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-gray-900">Client Assessment Checklist</h3>
+                      <h3 className="text-lg font-bold text-gray-900">Data Intake</h3>
                       <p className="text-sm text-gray-500 font-medium">Responses submitted by the client</p>
                     </div>
                   </div>

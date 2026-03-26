@@ -157,7 +157,7 @@ Round to integer.
 ═══════════════════════════════════════════
 5. OVERALL SCORE & PRIORITY
 ═══════════════════════════════════════════
-AI Opportunity Score = (0.30 × Value Score) + (0.25 × Data Score) + (0.25 × Feasibility Score) + (0.20 × Risk Adjusted Score)
+Opportunity Tracker Score = (0.30 × Value Score) + (0.25 × Data Score) + (0.25 × Feasibility Score) + (0.20 × Risk Adjusted Score)
 Round to integer.
 
 Priority classification:
@@ -642,7 +642,7 @@ and what the client could do to make it viable in the future.
 
 Respond ONLY with a JSON object:
 {
-  "scheduleTitle": "Opportunity Assessment Summary",
+  "scheduleTitle": "Opportunity Tracker Assessment Summary",
   "clientExecutiveSummary": "1-2 sentence professional explanation of why this opportunity is not being pursued at this time.",
   "notConsideredDetails": {
     "formalJustification": "3-4 sentence professional, respectful explanation referencing specific checklist inputs and scores. Do not be dismissive — frame it as 'not yet ready' rather than 'rejected'.",
@@ -683,7 +683,7 @@ Every item must reference THIS specific opportunity. No generic filler.
 
 Respond ONLY with a JSON object:
 {
-  "scheduleTitle": "e.g. Pre-Automation Readiness Plan for [Opportunity Name]",
+  "scheduleTitle": "e.g. Pre-Automation Readiness Plan for [Opportunity Tracker Name]",
   "clientExecutiveSummary": "1-2 sentence overview of why these preparation steps are critical for THIS project.",
   "preAutomationTasks": [
     {

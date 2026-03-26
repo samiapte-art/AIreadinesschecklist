@@ -23,7 +23,7 @@ export default function AssessmentChecklist({ checklistData = {}, onUpdate, read
             <ClipboardList size={18} className="text-finivis-blue" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-bold text-gray-900">Automation Assessment Checklist</h3>
+            <h3 className="text-sm font-bold text-gray-900">Data Intake</h3>
             <p className="text-xs text-gray-400 font-medium">
               Complete all sections to help us understand your automation needs
             </p>
