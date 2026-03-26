@@ -43,6 +43,7 @@ export default function DataIntakePage({ session }) {
     const payload = {
       user_id: session?.user?.id,
       client_name: newClientName,
+      client_website: '',
       opportunities_json: [{}],
       checklist_json: {}
     };
